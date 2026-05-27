@@ -281,7 +281,28 @@ const TouchControls={
   _qc(){const l=this._lc();return{x:l.x,y:l.y-this.R-this.btnR-10};},
   _rlc(){const l=this._lc();return{x:l.x+this.btnR*2+10,y:l.y-this.R-this.btnR-10};},
   _fc(){const r=this._rc();return{x:r.x,y:r.y-this.R-this.btnR-10};},
+  _fsc(){return{x:30,y:30};},
   _hit(tx,ty,p){const dx=tx-p.x,dy=ty-p.y,hr=this.btnR+12;return dx*dx+dy*dy<hr*hr;},
+  _hitFS(tx,ty){const p=this._fsc(),dx=tx-p.x,dy=ty-p.y;return dx*dx+dy*dy<26*26;},
+  _showHint:0,
+  _toggleFS(){
+    const el=document.documentElement;
+    const isFS=document.fullscreenElement||document.webkitFullscreenElement;
+    if(isFS){
+      (document.exitFullscreen||document.webkitExitFullscreen)?.call(document);
+      return;
+    }
+    const req=el.requestFullscreen||el.webkitRequestFullscreen||el.webkitRequestFullScreen;
+    if(!req){
+      // iOS Safari: no fullscreen API for non-video elements. Show hint.
+      this._showHint=performance.now()+5000;
+      return;
+    }
+    try{
+      const p=req.call(el);
+      if(p&&p.then)p.then(()=>{try{screen.orientation?.lock?.('landscape');}catch(e){}}).catch(()=>{this._showHint=performance.now()+5000;});
+    }catch(e){this._showHint=performance.now()+5000;}
+  },
   init(){
     if(!this.on)return;
     const o={passive:false};
@@ -293,6 +314,8 @@ const TouchControls={
   _start(e){
     this._used=true;
     for(const t of e.changedTouches){
+      // Fullscreen button (always available in any game state)
+      if(this._hitFS(t.clientX,t.clientY)){this._toggleFS();continue;}
       // Menus: emulate click tap
       if(typeof Game!=='undefined'&&Game.state!=='playing'){
         Input.mouse.x=t.clientX;Input.mouse.y=t.clientY;
@@ -358,10 +381,45 @@ const TouchControls={
     if(this.rJust){Input.mouseJustPressed=true;this.rJust=false;}
   },
   draw(){
-    if(!this.on||typeof Game==='undefined'||Game.state!=='playing')return;
+    if(!this.on)return;
+    ctx.save();
+    // Fullscreen toggle button — drawn in EVERY state so user can always toggle
+    const fsc=this._fsc();
+    const isFS=!!(document.fullscreenElement||document.webkitFullscreenElement);
+    ctx.globalAlpha=0.55;ctx.fillStyle='rgba(0,0,0,0.55)';
+    ctx.beginPath();ctx.arc(fsc.x,fsc.y,20,0,Math.PI*2);ctx.fill();
+    ctx.globalAlpha=0.85;ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.stroke();
+    // FS icon (two corner brackets, or × when in fullscreen)
+    ctx.globalAlpha=0.95;ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.lineCap='round';
+    ctx.beginPath();
+    if(isFS){
+      // ✕
+      ctx.moveTo(fsc.x-6,fsc.y-6);ctx.lineTo(fsc.x+6,fsc.y+6);
+      ctx.moveTo(fsc.x+6,fsc.y-6);ctx.lineTo(fsc.x-6,fsc.y+6);
+    } else {
+      // ⛶ expand brackets
+      ctx.moveTo(fsc.x-8,fsc.y-4);ctx.lineTo(fsc.x-8,fsc.y-8);ctx.lineTo(fsc.x-4,fsc.y-8);
+      ctx.moveTo(fsc.x+4,fsc.y-8);ctx.lineTo(fsc.x+8,fsc.y-8);ctx.lineTo(fsc.x+8,fsc.y-4);
+      ctx.moveTo(fsc.x+8,fsc.y+4);ctx.lineTo(fsc.x+8,fsc.y+8);ctx.lineTo(fsc.x+4,fsc.y+8);
+      ctx.moveTo(fsc.x-4,fsc.y+8);ctx.lineTo(fsc.x-8,fsc.y+8);ctx.lineTo(fsc.x-8,fsc.y+4);
+    }
+    ctx.stroke();
+    // iOS fallback hint
+    if(this._showHint>performance.now()){
+      const w=Math.min(canvas.width-40,320);
+      ctx.globalAlpha=0.92;ctx.fillStyle='rgba(0,0,0,0.85)';
+      ctx.fillRect(canvas.width/2-w/2,60,w,56);
+      ctx.strokeStyle='#ffaa44';ctx.lineWidth=2;ctx.strokeRect(canvas.width/2-w/2,60,w,56);
+      ctx.fillStyle='#ffaa44';ctx.font='bold 12px monospace';ctx.textAlign='center';
+      ctx.fillText('iOS Safari can\'t do API fullscreen.',canvas.width/2,80);
+      ctx.fillStyle='#fff';ctx.font='11px monospace';
+      ctx.fillText('Tap Share → "Add to Home Screen"',canvas.width/2,98);
+      ctx.fillText('then launch from the icon for fullscreen.',canvas.width/2,112);
+    }
+    // Joysticks + ability buttons only in playing state
+    if(typeof Game==='undefined'||Game.state!=='playing'){ctx.restore();return;}
     const {R,r,E,btnR}=this;
     const lc=this._lc(),rc=this._rc(),qc=this._qc(),rlc=this._rlc(),fc=this._fc();
-    ctx.save();
     // Move stick
     ctx.globalAlpha=0.28;ctx.strokeStyle='#fff';ctx.lineWidth=2.5;
     ctx.beginPath();ctx.arc(lc.x,lc.y,R,0,Math.PI*2);ctx.stroke();
