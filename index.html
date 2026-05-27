@@ -52,7 +52,7 @@
 const canvas=document.getElementById('gameCanvas');
 const ctx=canvas.getContext('2d');
 // Bump this on every release — shown in main menu so users can confirm they've got the latest
-const GAME_VERSION='v2.7';
+const GAME_VERSION='v2.8';
 // Virtual design resolution — game UI was authored for ~1920x1080.
 // We render at this fixed internal size and CSS-scale the canvas to fit
 // the device viewport, so the layout is identical on phone and desktop.
@@ -2795,68 +2795,68 @@ const KiwiTree={
   paths:[
     {id:'survivor',name:'SURVIVOR',color:'#44ff88',icon:'❤',desc:'Health & survivability',
       nodes:[
-        {lvl:1,name:'+5 HP',type:'stat',special:false,apply:p=>{p.maxHp+=5;p.hp+=5;}},
-        {lvl:2,name:'+5 HP',type:'stat',special:false,apply:p=>{p.maxHp+=5;p.hp+=5;}},
-        {lvl:3,name:'IRON BODY · +15 HP',type:'special',special:true,apply:p=>{p.maxHp+=15;p.hp+=15;}},
-        {lvl:4,name:'+5% DMG REDUCTION',type:'stat',special:false,apply:p=>{p.damageResist=(p.damageResist||0)+0.05;}},
-        {lvl:5,name:'+8 HP',type:'stat',special:false,apply:p=>{p.maxHp+=8;p.hp+=8;}},
-        {lvl:6,name:'EMERGENCY SHIELD',type:'special',special:true,apply:p=>{p.hasShield=true;p.shieldDur=2;p.shieldCDMax=30;p.shieldCD=0;}},
-        {lvl:7,name:'+8% HEALING',type:'stat',special:false,apply:p=>{p.healingMult=(p.healingMult||1)+0.08;}},
-        {lvl:8,name:'+10 HP',type:'stat',special:false,apply:p=>{p.maxHp+=10;p.hp+=10;}},
-        {lvl:9,name:'SECOND CHANCE · revive 30%',type:'special',special:true,apply:p=>{p.deathWish=1;p.deathWishUsed=false;}},
-        {lvl:10,name:'+15 HP + 5% DR',type:'stat',special:false,apply:p=>{p.maxHp+=15;p.hp+=15;p.damageResist=(p.damageResist||0)+0.05;}},
+        {lvl:1,name:'+12 HP',type:'stat',special:false,apply:p=>{p.maxHp+=12;p.hp+=12;}},
+        {lvl:2,name:'+12 HP',type:'stat',special:false,apply:p=>{p.maxHp+=12;p.hp+=12;}},
+        {lvl:3,name:'IRON BODY · +35 HP',type:'special',special:true,apply:p=>{p.maxHp+=35;p.hp+=35;}},
+        {lvl:4,name:'+10% DMG REDUCTION',type:'stat',special:false,apply:p=>{p.damageResist=(p.damageResist||0)+0.10;}},
+        {lvl:5,name:'+18 HP · +5 REGEN/s',type:'stat',special:false,apply:p=>{p.maxHp+=18;p.hp+=18;p.regenPerSec=(p.regenPerSec||0)+0.5;}},
+        {lvl:6,name:'EMERGENCY SHIELD x2',type:'special',special:true,apply:p=>{p.hasShield=true;p.shieldDur=3.5;p.shieldCDMax=18;p.shieldCD=0;}},
+        {lvl:7,name:'+18% HEALING',type:'stat',special:false,apply:p=>{p.healingMult=(p.healingMult||1)+0.18;}},
+        {lvl:8,name:'+25 HP',type:'stat',special:false,apply:p=>{p.maxHp+=25;p.hp+=25;}},
+        {lvl:9,name:'SECOND CHANCE · revive 60%',type:'special',special:true,apply:p=>{p.deathWish=1;p.deathWishUsed=false;p.deathWishHp=0.6;}},
+        {lvl:10,name:'IMMORTAL · +40 HP · +10% DR · lifesteal 3%',type:'stat',special:false,apply:p=>{p.maxHp+=40;p.hp+=40;p.damageResist=(p.damageResist||0)+0.10;p.lifesteal=(p.lifesteal||0)+0.03;}},
       ]},
     {id:'weapon',name:'WEAPON MASTER',color:'#ff6644',icon:'⚔',desc:'Damage & weapons',
       nodes:[
-        {lvl:1,name:'+5% DMG',type:'stat',special:false,apply:p=>{p.dmgMult*=1.05;}},
-        {lvl:2,name:'+3% FIRE RATE',type:'stat',special:false,apply:p=>{p.rofMult/=1.03;}},
-        {lvl:3,name:'BULLET STORM · +10% ROF',type:'special',special:true,apply:p=>{p.rofMult/=1.10;}},
-        {lvl:4,name:'+5% DMG',type:'stat',special:false,apply:p=>{p.dmgMult*=1.05;}},
-        {lvl:5,name:'+3% CRIT CHANCE',type:'stat',special:false,apply:p=>{p.critChance=(p.critChance||0)+0.03;}},
-        {lvl:6,name:'RICOCHET · 10% bounce',type:'special',special:true,apply:p=>{p.bulletBounce=(p.bulletBounce||0)+1;p.ricochetChance=0.10;}},
-        {lvl:7,name:'PIERCING · 5% pierce',type:'special',special:true,apply:p=>{p.bulletPierceBonus=(p.bulletPierceBonus||0)+1;p.pierceChance=0.05;}},
-        {lvl:8,name:'+8% DMG',type:'stat',special:false,apply:p=>{p.dmgMult*=1.08;}},
-        {lvl:9,name:'LUCKY CHAMBER · 5% no ammo',type:'special',special:true,apply:p=>{p.luckyChamberChance=0.05;}},
-        {lvl:10,name:'+10% DMG · +5% ROF',type:'stat',special:false,apply:p=>{p.dmgMult*=1.10;p.rofMult/=1.05;}},
+        {lvl:1,name:'+10% DMG',type:'stat',special:false,apply:p=>{p.dmgMult*=1.10;}},
+        {lvl:2,name:'+8% FIRE RATE',type:'stat',special:false,apply:p=>{p.rofMult/=1.08;}},
+        {lvl:3,name:'BULLET STORM · +25% ROF',type:'special',special:true,apply:p=>{p.rofMult/=1.25;}},
+        {lvl:4,name:'+12% DMG',type:'stat',special:false,apply:p=>{p.dmgMult*=1.12;}},
+        {lvl:5,name:'+8% CRIT CHANCE · +50% CRIT DMG',type:'stat',special:false,apply:p=>{p.critChance=(p.critChance||0)+0.08;p.critMult=(p.critMult||1.5)+0.5;}},
+        {lvl:6,name:'RICOCHET · 25% bounce twice',type:'special',special:true,apply:p=>{p.bulletBounce=(p.bulletBounce||0)+2;p.ricochetChance=0.25;}},
+        {lvl:7,name:'PIERCING · 20% pierce 3',type:'special',special:true,apply:p=>{p.bulletPierceBonus=(p.bulletPierceBonus||0)+3;p.pierceChance=0.20;}},
+        {lvl:8,name:'+18% DMG',type:'stat',special:false,apply:p=>{p.dmgMult*=1.18;}},
+        {lvl:9,name:'LUCKY CHAMBER · 15% no ammo',type:'special',special:true,apply:p=>{p.luckyChamberChance=0.15;}},
+        {lvl:10,name:'WAR GOD · +25% DMG · +12% ROF · +1 bullet',type:'stat',special:false,apply:p=>{p.dmgMult*=1.25;p.rofMult/=1.12;p.extraBullets=(p.extraBullets||0)+1;}},
       ]},
     {id:'speed',name:'SPEED DEMON',color:'#44ddff',icon:'⚡',desc:'Movement & agility',
       nodes:[
-        {lvl:1,name:'+5% MOVE SPEED',type:'stat',special:false,apply:p=>{p.speedMult*=1.05;}},
-        {lvl:2,name:'+20 PICKUP RANGE',type:'stat',special:false,apply:p=>{p.magnetR=(p.magnetR||60)+20;}},
-        {lvl:3,name:'ADRENAL RUSH · +15% SPD',type:'special',special:true,apply:p=>{p.speedMult*=1.15;}},
-        {lvl:4,name:'+3% ATTACK SPEED',type:'stat',special:false,apply:p=>{p.rofMult/=1.03;}},
-        {lvl:5,name:'+5% MOVE SPEED',type:'stat',special:false,apply:p=>{p.speedMult*=1.05;}},
-        {lvl:6,name:'GHOST DASH · 5% phase',type:'special',special:true,apply:p=>{p.ghostDashChance=0.05;}},
-        {lvl:7,name:'+30 PICKUP RANGE',type:'stat',special:false,apply:p=>{p.magnetR=(p.magnetR||60)+30;}},
-        {lvl:8,name:'SPEED BURST · kill→20% SPD',type:'special',special:true,apply:p=>{p.speedBurstOnKill=true;}},
-        {lvl:9,name:'MAGNETIC PICKUP',type:'special',special:true,apply:p=>{p.magnetR=(p.magnetR||60)+200;}},
-        {lvl:10,name:'+10% MOVE SPEED',type:'stat',special:false,apply:p=>{p.speedMult*=1.10;}},
+        {lvl:1,name:'+10% MOVE SPEED',type:'stat',special:false,apply:p=>{p.speedMult*=1.10;}},
+        {lvl:2,name:'+60 PICKUP RANGE',type:'stat',special:false,apply:p=>{p.magnetR=(p.magnetR||60)+60;}},
+        {lvl:3,name:'ADRENAL RUSH · +30% SPD',type:'special',special:true,apply:p=>{p.speedMult*=1.30;}},
+        {lvl:4,name:'+8% ATTACK SPEED',type:'stat',special:false,apply:p=>{p.rofMult/=1.08;}},
+        {lvl:5,name:'+10% MOVE SPEED',type:'stat',special:false,apply:p=>{p.speedMult*=1.10;}},
+        {lvl:6,name:'GHOST DASH · 20% phase through bullets',type:'special',special:true,apply:p=>{p.ghostDashChance=0.20;}},
+        {lvl:7,name:'+100 PICKUP RANGE',type:'stat',special:false,apply:p=>{p.magnetR=(p.magnetR||60)+100;}},
+        {lvl:8,name:'SPEED BURST · kill→+40% SPD 2s',type:'special',special:true,apply:p=>{p.speedBurstOnKill=true;p.speedBurstAmount=0.4;}},
+        {lvl:9,name:'OMNI-MAGNET · pulls all XP',type:'special',special:true,apply:p=>{p.magnetR=(p.magnetR||60)+9999;}},
+        {lvl:10,name:'WIND WALKER · +20% SPD · +15% dodge',type:'stat',special:false,apply:p=>{p.speedMult*=1.20;p.dodgeChance=(p.dodgeChance||0)+0.15;}},
       ]},
     {id:'tech',name:'TECH GENIUS',color:'#aa88ff',icon:'⚙',desc:'Abilities & ultimates',
       nodes:[
-        {lvl:1,name:'+5% CD REDUCTION',type:'stat',special:false,apply:p=>{p.cdReduction=(p.cdReduction||0)+0.05;}},
-        {lvl:2,name:'+10% ULT CHARGE',type:'stat',special:false,apply:p=>{p.ultChargeMult=(p.ultChargeMult||1)*1.10;}},
-        {lvl:3,name:'ENERGY OVERFLOW · +20% ULT',type:'special',special:true,apply:p=>{p.ultChargeMult=(p.ultChargeMult||1)*1.20;}},
-        {lvl:4,name:'+5% CD REDUCTION',type:'stat',special:false,apply:p=>{p.cdReduction=(p.cdReduction||0)+0.05;}},
-        {lvl:5,name:'+10% ABILITY DURATION',type:'stat',special:false,apply:p=>{p.abilityDurMult=(p.abilityDurMult||1)*1.10;}},
-        {lvl:6,name:'DOUBLE CAST · 5% Q twice',type:'special',special:true,apply:p=>{p.doubleCastChance=0.05;}},
-        {lvl:7,name:'OVERCHARGE · ult +20%',type:'special',special:true,apply:p=>{p.ultDurMult=(p.ultDurMult||1)*1.20;}},
-        {lvl:8,name:'+5% CD REDUCTION',type:'stat',special:false,apply:p=>{p.cdReduction=(p.cdReduction||0)+0.05;}},
-        {lvl:9,name:'QUICK RECOVERY · Q reduces CD',type:'special',special:true,apply:p=>{p.quickRecovery=true;}},
-        {lvl:10,name:'+10% CD · +10% ULT',type:'stat',special:false,apply:p=>{p.cdReduction=(p.cdReduction||0)+0.10;p.ultChargeMult=(p.ultChargeMult||1)*1.10;}},
+        {lvl:1,name:'+12% CD REDUCTION',type:'stat',special:false,apply:p=>{p.cdReduction=(p.cdReduction||0)+0.12;}},
+        {lvl:2,name:'+25% ULT CHARGE',type:'stat',special:false,apply:p=>{p.ultChargeMult=(p.ultChargeMult||1)*1.25;}},
+        {lvl:3,name:'ENERGY OVERFLOW · +50% ULT',type:'special',special:true,apply:p=>{p.ultChargeMult=(p.ultChargeMult||1)*1.50;}},
+        {lvl:4,name:'+12% CD REDUCTION',type:'stat',special:false,apply:p=>{p.cdReduction=(p.cdReduction||0)+0.12;}},
+        {lvl:5,name:'+25% ABILITY DURATION',type:'stat',special:false,apply:p=>{p.abilityDurMult=(p.abilityDurMult||1)*1.25;}},
+        {lvl:6,name:'DOUBLE CAST · 15% Q twice',type:'special',special:true,apply:p=>{p.doubleCastChance=0.15;}},
+        {lvl:7,name:'OVERCHARGE · ult +50% dur',type:'special',special:true,apply:p=>{p.ultDurMult=(p.ultDurMult||1)*1.50;}},
+        {lvl:8,name:'+12% CD REDUCTION',type:'stat',special:false,apply:p=>{p.cdReduction=(p.cdReduction||0)+0.12;}},
+        {lvl:9,name:'QUICK RECOVERY · Q kills reset CD',type:'special',special:true,apply:p=>{p.quickRecovery=true;p.qResetOnKill=true;}},
+        {lvl:10,name:'TECH MASTER · +25% CD · +25% ULT · +50% dur',type:'stat',special:false,apply:p=>{p.cdReduction=(p.cdReduction||0)+0.25;p.ultChargeMult=(p.ultChargeMult||1)*1.25;p.abilityDurMult=(p.abilityDurMult||1)*1.50;}},
       ]},
     {id:'chaos',name:'CHAOS',color:'#ff44ff',icon:'★',desc:'Random crazy effects',
       nodes:[
-        {lvl:1,name:'+3% RANDOM BONUS',type:'stat',special:false,apply:p=>{p.dmgMult*=1.03;p.speedMult*=1.03;}},
-        {lvl:2,name:'+3% CRIT CHANCE',type:'stat',special:false,apply:p=>{p.critChance=(p.critChance||0)+0.03;}},
-        {lvl:3,name:'ABSOLUTE MADNESS · 10% giant',type:'special',special:true,apply:p=>{p.giantBulletChance=0.10;}},
-        {lvl:4,name:'+5% LUCKY DROPS',type:'stat',special:false,apply:p=>{p.luckyDrops=(p.luckyDrops||0)+0.05;}},
-        {lvl:5,name:'+5% RANDOM BONUS',type:'stat',special:false,apply:p=>{p.dmgMult*=1.05;p.rofMult/=1.05;}},
-        {lvl:6,name:'MINI BLACK HOLE · 5% on kill',type:'special',special:true,apply:p=>{p.blackHoleOnKillChance=0.05;}},
-        {lvl:7,name:'+5% MOVE SPEED',type:'stat',special:false,apply:p=>{p.speedMult*=1.05;}},
-        {lvl:8,name:'WILD MAGIC · random projectile',type:'special',special:true,apply:p=>{p.wildMagic=true;}},
-        {lvl:9,name:'CHAOS COMPANION',type:'special',special:true,apply:p=>{p.chaosCompanion=true;}},
-        {lvl:10,name:'+8% RANDOM BONUSES',type:'stat',special:false,apply:p=>{p.dmgMult*=1.08;p.speedMult*=1.05;p.cdReduction=(p.cdReduction||0)+0.05;}},
+        {lvl:1,name:'+6% DMG · +6% SPD',type:'stat',special:false,apply:p=>{p.dmgMult*=1.06;p.speedMult*=1.06;}},
+        {lvl:2,name:'+8% CRIT CHANCE',type:'stat',special:false,apply:p=>{p.critChance=(p.critChance||0)+0.08;}},
+        {lvl:3,name:'ABSOLUTE MADNESS · 25% giant bullet',type:'special',special:true,apply:p=>{p.giantBulletChance=0.25;}},
+        {lvl:4,name:'+15% LUCKY DROPS',type:'stat',special:false,apply:p=>{p.luckyDrops=(p.luckyDrops||0)+0.15;}},
+        {lvl:5,name:'+10% DMG · +10% ROF',type:'stat',special:false,apply:p=>{p.dmgMult*=1.10;p.rofMult/=1.10;}},
+        {lvl:6,name:'MINI BLACK HOLE · 15% on kill',type:'special',special:true,apply:p=>{p.blackHoleOnKillChance=0.15;}},
+        {lvl:7,name:'+12% MOVE SPEED',type:'stat',special:false,apply:p=>{p.speedMult*=1.12;}},
+        {lvl:8,name:'WILD MAGIC · 4 random projectiles',type:'special',special:true,apply:p=>{p.wildMagic=true;p.wildMagicCount=4;}},
+        {lvl:9,name:'CHAOS COMPANION · summon ally',type:'special',special:true,apply:p=>{p.chaosCompanion=true;}},
+        {lvl:10,name:'CHAOS GOD · +20% all · 10% double-shot',type:'stat',special:false,apply:p=>{p.dmgMult*=1.20;p.speedMult*=1.20;p.rofMult/=1.20;p.cdReduction=(p.cdReduction||0)+0.20;p.doubleShotChance=(p.doubleShotChance||0)+0.10;}},
       ]},
   ],
   cost(lvl){return KIWI_TREE_COSTS[lvl-1]||100;},
@@ -8086,23 +8086,19 @@ class Player{
     const isElite=enemy?.elite;
     const isMiniBoss=enemy?.kind==='miniboss';
     const isSpecialBoss=enemy?.kind==='specialboss';
-    // EVOLUTION SHARD — drops on 2nd+ main boss kill of the run.
-    // We track per-run kills in Game._mainBossKillsThisRun so the FIRST boss doesn't drop it.
-    const _awardShard=()=>{
+    // EVOLUTION SHARD drops — generous now. Every main boss drops 1, mini-boss drops 1 half the time.
+    const _awardShard=(amount)=>{
       if(typeof Game==='undefined')return;
-      Game._mainBossKillsThisRun=(Game._mainBossKillsThisRun||0)+1;
-      if(Game._mainBossKillsThisRun>=2){
-        if(!Save.data.evoShards)Save.data.evoShards=0;
-        Save.data.evoShards+=1;Save.save();
-        UI.announce(`⚡ EVOLUTION SHARD · You have ${Save.data.evoShards} ⚡`,3.5,'#ff44ff');
-        AudioManager.play('ult_ready');
-      }
+      if(!Save.data.evoShards)Save.data.evoShards=0;
+      Save.data.evoShards+=amount;Save.save();
+      UI.announce(`⚡ EVOLUTION SHARD${amount>1?' x'+amount:''} · You have ${Save.data.evoShards} ⚡`,3.5,'#ff44ff');
+      AudioManager.play('ult_ready');
     };
-    if(isSpecialBoss){if(_isMain){Save.addBirds(6);Save.bumpStat('bossesKilled',1);_awardShard();UI.announce('🐦 +6 KIWI BIRDS',2,'#ffdd66');}this._lastBossKillT=performance.now()/1000;}
-    else if(isBoss){if(_isMain){Save.addBirds(4);Save.bumpStat('bossesKilled',1);_awardShard();UI.announce('🐦 +4 KIWI BIRDS',2,'#ffdd66');}this._lastBossKillT=performance.now()/1000;
+    if(isSpecialBoss){if(_isMain){Save.addBirds(6);Save.bumpStat('bossesKilled',1);_awardShard(2);UI.announce('🐦 +6 KIWI BIRDS',2,'#ffdd66');}this._lastBossKillT=performance.now()/1000;}
+    else if(isBoss){if(_isMain){Save.addBirds(4);Save.bumpStat('bossesKilled',1);_awardShard(1);UI.announce('🐦 +4 KIWI BIRDS',2,'#ffdd66');}this._lastBossKillT=performance.now()/1000;
       // Speed kill bonus: <30s from spawn
       if(enemy._spawnT&&(performance.now()/1000-enemy._spawnT)<30){if(_isMain){Save.addBirds(1);UI.announce('⚡ SPEED KILL +1 BIRD',1.6,'#ffee44');}}}
-    else if(isMiniBoss){if(_isMain){Save.addBirds(2);Save.bumpStat('bossesKilled',1);UI.announce('🐦 +2 KIWI BIRDS',1.6,'#ffdd66');}}
+    else if(isMiniBoss){if(_isMain){Save.addBirds(2);Save.bumpStat('bossesKilled',1);UI.announce('🐦 +2 KIWI BIRDS',1.6,'#ffdd66');if(Math.random()<0.5)_awardShard(1);}}
     else if(isElite){if(Math.random()<0.20){FeatherPickups.spawn(enemy.x,enemy.y);}}
     else {if(Math.random()<0.05){FeatherPickups.spawn(enemy.x,enemy.y);}}
     if(this.healOnKill>0)this.hp=Math.min(this.maxHp,this.hp+this.healOnKill);
@@ -8785,7 +8781,16 @@ class Player{
         break;}
       case 'gojo':{
         this.qCD=8*cdMult;
-        const gtx=Camera.wx(Input.mouse.x),gty=Camera.wy(Input.mouse.y);
+        // On touch devices the mouse position can be stale after releasing the joystick.
+        // Project from the player's current aim direction so it always shoots where you're aiming.
+        let gtx,gty;
+        if(typeof TouchControls!=='undefined'&&TouchControls.on){
+          const range=280;
+          gtx=this.x+Math.cos(this.aimAngle)*range;
+          gty=this.y+Math.sin(this.aimAngle)*range;
+        } else {
+          gtx=Camera.wx(Input.mouse.x);gty=Camera.wy(Input.mouse.y);
+        }
         const gc=clampPoly(gtx,gty,20);
         const isRed=Math.random()<0.5;
         if(isRed){
@@ -9319,8 +9324,16 @@ class Player{
       const obs=collideObstacle(nx,ny,PHYS_R);
       if(!obs){this.x=nx;this.y=ny;}
       else {
+        // Slide along walls instead of fully blocking
         if(!collideObstacle(this.x,ny,PHYS_R))this.y=ny;
         else if(!collideObstacle(nx,this.y,PHYS_R))this.x=nx;
+        else {
+          // Stuck on a corner — gently push out away from the obstacle center
+          const ox=obs.x-this.x,oy=obs.y-this.y;
+          const od=Math.sqrt(ox*ox+oy*oy)||1;
+          const pushX=-ox/od*60*dt,pushY=-oy/od*60*dt;
+          if(!collideObstacle(this.x+pushX,this.y+pushY,PHYS_R)){this.x+=pushX;this.y+=pushY;}
+        }
       }
       const c=clampPoly(this.x,this.y,PHYS_R);this.x=c.x;this.y=c.y;
       this.angle=Math.atan2(dy,dx);
@@ -9929,7 +9942,7 @@ function drawArena(){
   // polygon clip
   ctx.save();
   ctx.beginPath();
-  POLY.forEach(([x,y],i)=>{const sx=x-Camera.x,sy=y-Camera.y;if(i===0)ctx.moveTo(sx,sy);else ctx.lineTo(sx,sy);});
+  POLY.forEach(([x,y],i)=>{const sx=Camera.sx(x),sy=Camera.sy(y);if(i===0)ctx.moveTo(sx,sy);else ctx.lineTo(sx,sy);});
   ctx.closePath();
   // floor gradient
   const cx=Camera.sx(ARENA/2),cy=Camera.sy(ARENA/2);
@@ -10039,14 +10052,14 @@ function drawArena(){
   ctx.restore();
   // polygon border - layered glow
   ctx.beginPath();
-  POLY.forEach(([x,y],i)=>{const sx=x-Camera.x,sy=y-Camera.y;if(i===0)ctx.moveTo(sx,sy);else ctx.lineTo(sx,sy);});
+  POLY.forEach(([x,y],i)=>{const sx=Camera.sx(x),sy=Camera.sy(y);if(i===0)ctx.moveTo(sx,sy);else ctx.lineTo(sx,sy);});
   ctx.closePath();
   ctx.strokeStyle=TH.borderGlow;ctx.lineWidth=10;ctx.stroke();
   ctx.strokeStyle=TH.borderColor;ctx.lineWidth=3.5;ctx.shadowColor=TH.borderColor;ctx.shadowBlur=14;ctx.stroke();
   ctx.strokeStyle='#ccddff';ctx.lineWidth=1;ctx.shadowBlur=0;ctx.stroke();
   // corner accents
   POLY.forEach(([x,y])=>{
-    const sx=x-Camera.x,sy=y-Camera.y;
+    const sx=Camera.sx(x),sy=Camera.sy(y);
     if(sx<-30||sx>canvas.width+30||sy<-30||sy>canvas.height+30)return;
     ctx.fillStyle=TH.cornerColor;ctx.shadowColor=TH.borderColor;ctx.shadowBlur=12;
     ctx.beginPath();ctx.arc(sx,sy,4,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0;
