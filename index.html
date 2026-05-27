@@ -13,25 +13,28 @@
 <title>Kiwi Mayhem</title>
 <script type="module">
   // Trystero — free P2P WebRTC over public signaling (no server needed).
-  // Powers online multiplayer. Try multiple CDNs in case one is blocked/slow.
-  const CDNS=[
+  // Try multiple STRATEGIES — if BT trackers are blocked, fall back to Nostr or MQTT.
+  const ATTEMPTS=[
     'https://esm.sh/trystero@0.21.5/torrent',
+    'https://esm.sh/trystero@0.21.5/nostr',
+    'https://esm.sh/trystero@0.21.5/mqtt',
     'https://cdn.jsdelivr.net/npm/trystero@0.21.5/+esm',
     'https://esm.sh/trystero/torrent',
-    'https://esm.sh/trystero@0.20.0/torrent'
+    'https://esm.sh/trystero/nostr',
+    'https://esm.sh/trystero/mqtt'
   ];
-  let loaded=null,lastErr=null;
-  for(const url of CDNS){
+  let loaded=null,lastErr=null,usedUrl='';
+  for(const url of ATTEMPTS){
     try{
       const m=await import(url);
-      if(m&&m.joinRoom){loaded=m;console.log('[MP] Trystero loaded from',url);break;}
-    }catch(e){lastErr=e;console.warn('[MP] CDN failed:',url,e&&e.message);}
+      if(m&&m.joinRoom){loaded=m;usedUrl=url;console.log('[MP] Trystero loaded from',url);break;}
+    }catch(e){lastErr=e;console.warn('[MP] failed:',url,e&&e.message);}
   }
   if(loaded){
-    window.MP={joinRoom:loaded.joinRoom,selfId:loaded.selfId,ready:true};
+    window.MP={joinRoom:loaded.joinRoom,selfId:loaded.selfId,ready:true,via:usedUrl.split('/').pop()};
   } else {
-    console.warn('[MP] All Trystero CDNs failed — online multiplayer disabled.',lastErr);
-    window.MP={ready:false,error:(lastErr&&lastErr.message)||'all CDNs failed'};
+    console.warn('[MP] All Trystero strategies failed — online disabled.',lastErr);
+    window.MP={ready:false,error:(lastErr&&lastErr.message)||'all failed'};
   }
   window.dispatchEvent(new Event('mp-ready'));
 </script>
@@ -368,7 +371,11 @@ const Net={
     if(this.room){try{this.room.leave();}catch(_){}}
     this.enabled=false;this.isHost=asHost;this.roomCode=code;this.roster=[];this.inputs={};this.lastSnapshot=null;this.lobbyState=null;
     try{
-      this.room=window.MP.joinRoom({appId:'kiwi-mayhem-v1'},code);
+      // Trystero recommends room IDs ≥ 20 chars. Pad the user's 6-char code
+      // with a deterministic suffix so the namespace is unique and long enough.
+      const roomId='kiwi-mayhem-room-'+code+'-v1';
+      console.log('[MP] Joining room:',roomId,'asHost:',asHost);
+      this.room=window.MP.joinRoom({appId:'kiwi-mayhem-v1'},roomId);
       this.selfId=window.MP.selfId;
       [this._sendInput,this._getInput]=this.room.makeAction('inp');
       [this._sendState,this._getState]=this.room.makeAction('st');
@@ -388,18 +395,23 @@ const Net={
         this._broadcastLobby();
       });
       this.room.onPeerJoin(pid=>{
+        console.log('[MP] Peer joined:',pid,'isHost:',this.isHost);
         if(this.isHost){
           // Add to roster (next free slot)
           const slot=this._nextSlot();
           this.roster.push({peerId:pid,charId:'octane',weaponId:'r301',slot,isLocal:false,isHost:false});
+          this.status=`Peer joined (${this.roster.length}/4)`;
           // Send lobby immediately + again after delays — WebRTC data channels need a moment
           this._broadcastLobby();
           setTimeout(()=>this._broadcastLobby(),300);
           setTimeout(()=>this._broadcastLobby(),900);
           setTimeout(()=>this._broadcastLobby(),2000);
+        } else {
+          this.status=`Host found · ${pid.slice(0,8)}…`;
         }
       });
       this.room.onPeerLeave(pid=>{
+        console.log('[MP] Peer left:',pid);
         delete this.inputs[pid];
         if(this.isHost){
           this.roster=this.roster.filter(p=>p.peerId!==pid);
@@ -10576,11 +10588,25 @@ const UI={
         ctx.fillText('Waiting for host to start…',cx+150,slotY+slotH+62+5);
       }
       this._drawMenuBtn(cx,slotY+slotH+118,200,38,'← LEAVE','#ff6666',click);
-      // Status line
+      // Diagnostic block — shows network state so users can diagnose connection issues
+      const dy=slotY+slotH+160;
+      ctx.fillStyle='rgba(180,220,255,0.55)';ctx.font='bold 11px monospace';ctx.textAlign='center';
+      ctx.fillText('— CONNECTION STATUS —',cx,dy);
+      ctx.fillStyle='rgba(180,220,255,0.7)';ctx.font='10px monospace';
+      const via=(window.MP&&window.MP.via)||'unknown';
+      const peers=Net.room?(Net.room.getPeers?Object.keys(Net.room.getPeers()||{}).length:0):0;
+      const myShort=Net.selfId?Net.selfId.slice(0,10):'?';
+      ctx.fillText(`Net library: ${via}  ·  Your ID: ${myShort}…  ·  Peers seen: ${peers}`,cx,dy+18);
       if(Net.status){
-        ctx.fillStyle='rgba(180,220,255,0.45)';ctx.font='10px monospace';
-        ctx.fillText(Net.status,cx,canvas.height-20);
+        ctx.fillStyle=Net.status.includes('failed')||Net.status.includes('FAILED')?'#ff8866':'rgba(180,220,255,0.65)';
+        ctx.fillText(Net.status,cx,dy+34);
       }
+      if(!Net.isHost&&peers===0){
+        ctx.fillStyle='#ffaa44';ctx.font='10px monospace';
+        ctx.fillText('⚠  No host found yet — keep waiting (up to 30s for P2P handshake)',cx,dy+52);
+        ctx.fillText('Both devices must be on networks that allow WebRTC.',cx,dy+66);
+      }
+      ctx.textAlign='left';
     }
   },
   _drawMenuBtn(cx,cy,bw,bh,label,color,click,disabled){
