@@ -5139,6 +5139,14 @@ const GUN_DRAW={
   },
 };
 
+// Tiny helper: darken/lighten a hex color by a 0..1 factor (returns rgba string)
+function _shade(hex,amt){
+  if(!hex||hex[0]!=='#'||hex.length<7)return hex;
+  let r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
+  if(amt>=0){r=Math.min(255,r+(255-r)*amt);g=Math.min(255,g+(255-g)*amt);b=Math.min(255,b+(255-b)*amt);}
+  else {const a=-amt;r=Math.max(0,r*(1-a));g=Math.max(0,g*(1-a));b=Math.max(0,b*(1-a));}
+  return `rgb(${r|0},${g|0},${b|0})`;
+}
 function drawCharacter(sx,sy,bodyAngle,aimAngle,fl,charDef,extraDraw,walkT=0,weaponId='r301',careType=null,recoilT=0){
   // animation
   const bob=Math.sin(walkT*12)*1.8;
@@ -5149,133 +5157,294 @@ function drawCharacter(sx,sy,bodyAngle,aimAngle,fl,charDef,extraDraw,walkT=0,wea
   const R=P_R; // draw radius alias
 
   const SK=fl?'#fff':'#e6c8a4';
+  const SKDark=fl?'#fff':'#a88a64';
   const CC=fl?'#fff':charDef.color;
+  const CCLight=fl?'#fff':_shade(charDef.color,0.35);
+  const CCDark=fl?'#fff':_shade(charDef.color,-0.4);
   const AC=fl?'#fff':charDef.accent;
+  const ACLight=fl?'#fff':_shade(charDef.accent,0.4);
   const DK=fl?'#fff':'#18181e';
   const PT=fl?'#fff':'#24243a';
+  const PTLight=fl?'#fff':'#3a3a55';
+  // Light direction: top-left (so highlights go top-left, shadows go bottom-right)
+  // Rim light intensity factor (0 in flash mode for stark white silhouette)
+  const RIM=fl?0:1;
 
-  // drop shadow
-  ctx.fillStyle='rgba(0,0,0,0.45)';
-  ctx.beginPath();ctx.ellipse(sx+2,sy+R*0.75,R*0.65,R*0.18,0,0,Math.PI*2);ctx.fill();
+  // ── DROP SHADOW (softer, longer) ─────────────────────────
+  const shadowG=ctx.createRadialGradient(sx+2,sy+R*0.78,R*0.1,sx+2,sy+R*0.78,R*0.85);
+  shadowG.addColorStop(0,'rgba(0,0,0,0.55)');
+  shadowG.addColorStop(1,'rgba(0,0,0,0)');
+  ctx.fillStyle=shadowG;
+  ctx.beginPath();ctx.ellipse(sx+2,sy+R*0.78,R*0.78,R*0.22,0,0,Math.PI*2);ctx.fill();
 
-  // LEGS
-  ctx.fillStyle=PT;
-  ctx.beginPath();ctx.roundRect(sx-R*0.30+legSwing*0.35,sy+R*0.12,R*0.28,R*0.60,4);ctx.fill();
-  ctx.beginPath();ctx.roundRect(sx+R*0.02+legSwing2*0.35,sy+R*0.12,R*0.28,R*0.60,4);ctx.fill();
-  // leg highlight (inner seam)
-  ctx.fillStyle=fl?'#fff':'rgba(255,255,255,0.08)';
-  ctx.fillRect(sx-R*0.21+legSwing*0.35,sy+R*0.15,R*0.06,R*0.46);
-  ctx.fillRect(sx+R*0.13+legSwing2*0.35,sy+R*0.15,R*0.06,R*0.46);
-  // BOOTS
-  ctx.fillStyle=DK;
-  ctx.beginPath();ctx.roundRect(sx-R*0.35+legSwing*0.35,sy+R*0.62,R*0.36,R*0.14,3);ctx.fill();
-  ctx.beginPath();ctx.roundRect(sx+R*0.02-legSwing2*0.35,sy+R*0.62,R*0.36,R*0.14,3);ctx.fill();
-  // boot highlight
-  ctx.fillStyle=fl?'#fff':'rgba(255,255,255,0.15)';
-  ctx.fillRect(sx-R*0.33+legSwing*0.35,sy+R*0.63,R*0.16,R*0.04);
-  ctx.fillRect(sx+R*0.04-legSwing2*0.35,sy+R*0.63,R*0.16,R*0.04);
-
-  // BELT
+  // ── LEGS (gradient fill + side highlight) ────────────────
+  const legY=sy+R*0.12, legH=R*0.60;
+  const legGrad=ctx.createLinearGradient(sx-R*0.30,legY,sx-R*0.02,legY);
+  legGrad.addColorStop(0,fl?'#fff':PTLight);
+  legGrad.addColorStop(0.5,PT);
+  legGrad.addColorStop(1,fl?'#fff':DK);
+  ctx.fillStyle=legGrad;
+  ctx.beginPath();ctx.roundRect(sx-R*0.30+legSwing*0.35,legY,R*0.28,legH,4);ctx.fill();
+  const legGrad2=ctx.createLinearGradient(sx+R*0.02,legY,sx+R*0.30,legY);
+  legGrad2.addColorStop(0,fl?'#fff':PTLight);
+  legGrad2.addColorStop(0.5,PT);
+  legGrad2.addColorStop(1,fl?'#fff':DK);
+  ctx.fillStyle=legGrad2;
+  ctx.beginPath();ctx.roundRect(sx+R*0.02+legSwing2*0.35,legY,R*0.28,legH,4);ctx.fill();
+  // knee pad (small accent square)
   ctx.fillStyle=AC;
-  ctx.beginPath();ctx.roundRect(sx-R*0.46,sy+R*0.08+totalBob,R*0.92,R*0.10,3);ctx.fill();
-  // belt buckle
-  ctx.fillStyle=fl?'#fff':'#ffcc44';
-  ctx.shadowColor='#ffcc44';ctx.shadowBlur=fl?0:4;
-  ctx.beginPath();ctx.roundRect(sx-R*0.08,sy+R*0.09+totalBob,R*0.16,R*0.08,2);ctx.fill();
-  ctx.shadowBlur=0;
+  ctx.beginPath();ctx.roundRect(sx-R*0.27+legSwing*0.35,sy+R*0.38,R*0.22,R*0.10,2);ctx.fill();
+  ctx.beginPath();ctx.roundRect(sx+R*0.05+legSwing2*0.35,sy+R*0.38,R*0.22,R*0.10,2);ctx.fill();
+  // knee pad highlights
+  ctx.fillStyle=fl?'#fff':'rgba(255,255,255,0.32)';
+  ctx.fillRect(sx-R*0.26+legSwing*0.35,sy+R*0.39,R*0.20,R*0.025);
+  ctx.fillRect(sx+R*0.06+legSwing2*0.35,sy+R*0.39,R*0.20,R*0.025);
 
-  // TORSO base
+  // ── BOOTS (gradient + metal toe cap) ─────────────────────
+  for(let lg=0;lg<2;lg++){
+    const swing=lg===0?legSwing:-legSwing2;
+    const bx=lg===0?sx-R*0.35+swing*0.35:sx+R*0.02+swing*0.35;
+    const by=sy+R*0.62;
+    const bw=R*0.36, bh=R*0.14;
+    // sole
+    ctx.fillStyle=fl?'#fff':'#0c0c12';
+    ctx.beginPath();ctx.roundRect(bx-1,by+bh-3,bw+2,5,2);ctx.fill();
+    // upper
+    const bootG=ctx.createLinearGradient(bx,by,bx,by+bh);
+    bootG.addColorStop(0,fl?'#fff':'#3a3a4a');
+    bootG.addColorStop(1,fl?'#fff':'#0a0a12');
+    ctx.fillStyle=bootG;
+    ctx.beginPath();ctx.roundRect(bx,by,bw,bh,3);ctx.fill();
+    // metal toe cap
+    ctx.fillStyle=fl?'#fff':AC;
+    ctx.beginPath();ctx.roundRect(bx+bw-R*0.14,by+1,R*0.13,bh-2,2);ctx.fill();
+    // boot highlight
+    ctx.fillStyle=fl?'#fff':'rgba(255,255,255,0.22)';
+    ctx.fillRect(bx+2,by+1,R*0.18,R*0.025);
+  }
+
+  // ── BELT (metallic gradient + rivets) ─────────────────────
+  const beltY=sy+R*0.08+totalBob;
+  const beltG=ctx.createLinearGradient(sx,beltY,sx,beltY+R*0.10);
+  beltG.addColorStop(0,ACLight);
+  beltG.addColorStop(0.5,AC);
+  beltG.addColorStop(1,fl?'#fff':_shade(charDef.accent,-0.3));
+  ctx.fillStyle=beltG;
+  ctx.beginPath();ctx.roundRect(sx-R*0.46,beltY,R*0.92,R*0.10,3);ctx.fill();
+  // rivets
+  ctx.fillStyle=fl?'#fff':'rgba(255,255,255,0.4)';
+  for(let i=-3;i<=3;i+=2){if(i===0||i===1)continue;ctx.beginPath();ctx.arc(sx+i*R*0.12,beltY+R*0.05,1.2,0,Math.PI*2);ctx.fill();}
+  // belt buckle (gold with sheen)
+  const buckleX=sx-R*0.08, buckleY=beltY+R*0.01;
+  const bkG=ctx.createLinearGradient(buckleX,buckleY,buckleX,buckleY+R*0.08);
+  bkG.addColorStop(0,fl?'#fff':'#ffe888');
+  bkG.addColorStop(0.5,fl?'#fff':'#ffcc44');
+  bkG.addColorStop(1,fl?'#fff':'#aa7711');
+  ctx.fillStyle=bkG;
+  ctx.shadowColor='#ffcc44';ctx.shadowBlur=fl?0:6;
+  ctx.beginPath();ctx.roundRect(buckleX,buckleY,R*0.16,R*0.08,2);ctx.fill();
+  ctx.shadowBlur=0;
+  // buckle highlight
+  ctx.fillStyle=fl?'#fff':'rgba(255,255,255,0.6)';
+  ctx.fillRect(buckleX+1,buckleY+1,R*0.06,R*0.015);
+
+  // ── TORSO ─────────────────────────────────────────────────
+  // undersuit base (dark)
   ctx.fillStyle=DK;
   ctx.beginPath();ctx.roundRect(sx-R*0.50,sy-R*0.35+totalBob,R*1.00,R*0.50,6);ctx.fill();
-  // chest plate (character color)
-  ctx.fillStyle=CC;
-  ctx.shadowColor=charDef.color;ctx.shadowBlur=fl?0:10;
-  ctx.beginPath();ctx.roundRect(sx-R*0.43,sy-R*0.30+totalBob,R*0.86,R*0.41,5);ctx.fill();
+  // chest plate with vertical gradient
+  const torsoX=sx-R*0.43, torsoY=sy-R*0.30+totalBob;
+  const torsoW=R*0.86, torsoH=R*0.41;
+  const torsoG=ctx.createLinearGradient(torsoX,torsoY,torsoX,torsoY+torsoH);
+  torsoG.addColorStop(0,CCLight);
+  torsoG.addColorStop(0.5,CC);
+  torsoG.addColorStop(1,CCDark);
+  ctx.fillStyle=torsoG;
+  ctx.shadowColor=charDef.color;ctx.shadowBlur=fl?0:12;
+  ctx.beginPath();ctx.roundRect(torsoX,torsoY,torsoW,torsoH,5);ctx.fill();
   ctx.shadowBlur=0;
+  // rim light on left edge
+  if(RIM){
+    ctx.fillStyle='rgba(255,255,255,0.22)';
+    ctx.beginPath();ctx.roundRect(torsoX,torsoY,R*0.06,torsoH,3);ctx.fill();
+  }
   // chest highlight (top gloss)
-  const cg=ctx.createLinearGradient(sx,sy-R*0.30+totalBob,sx,sy-R*0.08+totalBob);
-  cg.addColorStop(0,'rgba(255,255,255,0.28)');cg.addColorStop(1,'rgba(255,255,255,0)');
+  const cg=ctx.createLinearGradient(sx,torsoY,sx,torsoY+R*0.22);
+  cg.addColorStop(0,'rgba(255,255,255,0.35)');cg.addColorStop(1,'rgba(255,255,255,0)');
   ctx.fillStyle=cg;
-  ctx.beginPath();ctx.roundRect(sx-R*0.40,sy-R*0.29+totalBob,R*0.80,R*0.22,4);ctx.fill();
-  // chest emblem dot
-  ctx.fillStyle=AC;ctx.shadowColor=AC;ctx.shadowBlur=fl?0:6;
-  ctx.beginPath();ctx.arc(sx,sy-R*0.10+totalBob,R*0.10,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.roundRect(torsoX+R*0.03,torsoY+1,torsoW-R*0.06,R*0.22,4);ctx.fill();
+  // center sternum line (decorative)
+  ctx.strokeStyle=fl?'#fff':'rgba(0,0,0,0.35)';ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(sx,torsoY+R*0.04);ctx.lineTo(sx,torsoY+torsoH-R*0.05);ctx.stroke();
+  // chest plate panel lines (two diagonal V-grooves)
+  ctx.strokeStyle=fl?'#fff':'rgba(0,0,0,0.28)';ctx.lineWidth=1;
+  ctx.beginPath();
+  ctx.moveTo(sx-R*0.30,torsoY+R*0.05);ctx.lineTo(sx-R*0.08,torsoY+R*0.18);
+  ctx.moveTo(sx+R*0.30,torsoY+R*0.05);ctx.lineTo(sx+R*0.08,torsoY+R*0.18);
+  ctx.stroke();
+  // chest emblem (more detailed — bordered circle + inner dot)
+  const emY=sy-R*0.10+totalBob;
+  ctx.fillStyle=fl?'#fff':'rgba(0,0,0,0.4)';
+  ctx.beginPath();ctx.arc(sx,emY,R*0.13,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle=ACLight;ctx.shadowColor=AC;ctx.shadowBlur=fl?0:8;
+  ctx.beginPath();ctx.arc(sx,emY,R*0.10,0,Math.PI*2);ctx.fill();
   ctx.shadowBlur=0;
+  ctx.fillStyle=fl?'#fff':'rgba(255,255,255,0.55)';
+  ctx.beginPath();ctx.arc(sx-R*0.025,emY-R*0.025,R*0.04,0,Math.PI*2);ctx.fill();
 
-  // SHOULDERS (exaggerated)
-  ctx.fillStyle=AC;
-  ctx.shadowColor=charDef.color;ctx.shadowBlur=fl?0:6;
-  ctx.beginPath();ctx.arc(sx-R*0.50,sy-R*0.27+totalBob,R*0.22,0,Math.PI*2);ctx.fill();
-  ctx.beginPath();ctx.arc(sx+R*0.50,sy-R*0.27+totalBob,R*0.22,0,Math.PI*2);ctx.fill();
-  ctx.shadowBlur=0;
-  // shoulder highlights
-  ctx.fillStyle=CC;
-  ctx.beginPath();ctx.arc(sx-R*0.52,sy-R*0.31+totalBob,R*0.13,0,Math.PI*2);ctx.fill();
-  ctx.beginPath();ctx.arc(sx+R*0.50,sy-R*0.31+totalBob,R*0.13,0,Math.PI*2);ctx.fill();
+  // ── SHOULDERS (radial gradient pauldrons) ────────────────
+  for(let side=-1;side<=1;side+=2){
+    const shX=sx+side*R*0.50, shY=sy-R*0.27+totalBob;
+    const shG=ctx.createRadialGradient(shX-side*R*0.08,shY-R*0.08,R*0.04,shX,shY,R*0.22);
+    shG.addColorStop(0,ACLight);
+    shG.addColorStop(0.6,AC);
+    shG.addColorStop(1,fl?'#fff':_shade(charDef.accent,-0.4));
+    ctx.fillStyle=shG;
+    ctx.shadowColor=charDef.color;ctx.shadowBlur=fl?0:6;
+    ctx.beginPath();ctx.arc(shX,shY,R*0.22,0,Math.PI*2);ctx.fill();
+    ctx.shadowBlur=0;
+    // chrome rim
+    ctx.strokeStyle=fl?'#fff':'rgba(255,255,255,0.25)';ctx.lineWidth=1.2;
+    ctx.beginPath();ctx.arc(shX,shY,R*0.22,Math.PI,Math.PI*2);ctx.stroke();
+    // inner shoulder plate (character color)
+    const ipG=ctx.createRadialGradient(shX-side*R*0.05,shY-R*0.05,R*0.02,shX,shY,R*0.13);
+    ipG.addColorStop(0,CCLight);ipG.addColorStop(1,CC);
+    ctx.fillStyle=ipG;
+    ctx.beginPath();ctx.arc(shX-side*0.02,shY-R*0.04,R*0.13,0,Math.PI*2);ctx.fill();
+  }
 
-  // NECK
-  ctx.fillStyle=SK;
+  // ── NECK ──────────────────────────────────────────────────
+  const neckG=ctx.createLinearGradient(sx-R*0.13,sy-R*0.42+totalBob,sx-R*0.13,sy-R*0.28+totalBob);
+  neckG.addColorStop(0,SKDark);neckG.addColorStop(1,SK);
+  ctx.fillStyle=neckG;
   ctx.beginPath();ctx.roundRect(sx-R*0.13,sy-R*0.42+totalBob,R*0.26,R*0.14,3);ctx.fill();
 
-  // HEAD (oversized — 40% of char height)
-  ctx.fillStyle=SK;
-  ctx.shadowColor='rgba(0,0,0,0.4)';ctx.shadowBlur=6;
-  ctx.beginPath();ctx.arc(sx,sy-R*0.68+totalBob,R*0.40,0,Math.PI*2);ctx.fill();
+  // ── HEAD (radial-light skin) ──────────────────────────────
+  const headCX=sx, headCY=sy-R*0.68+totalBob;
+  const headG=ctx.createRadialGradient(headCX-R*0.12,headCY-R*0.12,R*0.04,headCX,headCY,R*0.40);
+  headG.addColorStop(0,fl?'#fff':'#fdebd2');
+  headG.addColorStop(0.6,SK);
+  headG.addColorStop(1,SKDark);
+  ctx.fillStyle=headG;
+  ctx.shadowColor='rgba(0,0,0,0.45)';ctx.shadowBlur=fl?0:7;
+  ctx.beginPath();ctx.arc(headCX,headCY,R*0.40,0,Math.PI*2);ctx.fill();
   ctx.shadowBlur=0;
+  // cheek blush (very subtle)
+  if(!fl){
+    ctx.fillStyle='rgba(255,140,120,0.18)';
+    ctx.beginPath();ctx.arc(headCX-R*0.18,headCY+R*0.04,R*0.07,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc(headCX+R*0.18,headCY+R*0.04,R*0.07,0,Math.PI*2);ctx.fill();
+  }
+  // chin shadow
+  ctx.fillStyle=fl?'#fff':'rgba(0,0,0,0.18)';
+  ctx.beginPath();ctx.ellipse(headCX,headCY+R*0.20,R*0.18,R*0.05,0,0,Math.PI*2);ctx.fill();
 
-  // HELMET / HAIR (character color, covers top half of head)
-  ctx.fillStyle=CC;
-  ctx.shadowColor=charDef.color;ctx.shadowBlur=fl?0:8;
-  ctx.beginPath();ctx.arc(sx,sy-R*0.70+totalBob,R*0.42,Math.PI*1.05,Math.PI*1.95,false);ctx.fill();
+  // ── HELMET ────────────────────────────────────────────────
+  const helmCY=sy-R*0.70+totalBob;
+  // dark inner liner
+  ctx.fillStyle=fl?'#fff':'#0c0c14';
+  ctx.beginPath();ctx.arc(headCX,helmCY,R*0.43,Math.PI*1.02,Math.PI*1.98,false);ctx.fill();
+  // outer helmet shell (radial gradient simulating metal sphere)
+  const helmG=ctx.createRadialGradient(headCX-R*0.18,helmCY-R*0.20,R*0.04,headCX,helmCY,R*0.42);
+  helmG.addColorStop(0,CCLight);
+  helmG.addColorStop(0.55,CC);
+  helmG.addColorStop(1,CCDark);
+  ctx.fillStyle=helmG;
+  ctx.shadowColor=charDef.color;ctx.shadowBlur=fl?0:9;
+  ctx.beginPath();ctx.arc(headCX,helmCY,R*0.42,Math.PI*1.05,Math.PI*1.95,false);
+  ctx.lineTo(headCX-R*0.42*Math.cos(Math.PI*0.05),helmCY-R*0.42*Math.sin(Math.PI*0.05));
+  ctx.fill();
   ctx.shadowBlur=0;
-  // helmet side plates
-  ctx.fillStyle=AC;
-  ctx.beginPath();ctx.roundRect(sx-R*0.42,sy-R*0.72+totalBob,R*0.10,R*0.20,3);ctx.fill();
-  ctx.beginPath();ctx.roundRect(sx+R*0.32,sy-R*0.72+totalBob,R*0.10,R*0.20,3);ctx.fill();
+  // helmet crest line (top ridge)
+  ctx.strokeStyle=ACLight;ctx.lineWidth=2.4;ctx.lineCap='round';
+  ctx.beginPath();ctx.moveTo(headCX-R*0.20,helmCY-R*0.36);ctx.lineTo(headCX+R*0.20,helmCY-R*0.36);ctx.stroke();
+  // helmet highlight stripe (specular)
+  ctx.strokeStyle=fl?'#fff':'rgba(255,255,255,0.45)';ctx.lineWidth=2;
+  ctx.beginPath();ctx.arc(headCX,helmCY,R*0.37,Math.PI*1.25,Math.PI*1.55,false);ctx.stroke();
+  // helmet side plates (more pronounced, beveled)
+  for(let side=-1;side<=1;side+=2){
+    const spX=sx+side*R*0.37, spY=helmCY-R*0.02;
+    const spG=ctx.createLinearGradient(spX,spY,spX,spY+R*0.20);
+    spG.addColorStop(0,ACLight);spG.addColorStop(0.5,AC);spG.addColorStop(1,fl?'#fff':_shade(charDef.accent,-0.4));
+    ctx.fillStyle=spG;
+    ctx.beginPath();ctx.roundRect(spX-R*0.05,spY,R*0.10,R*0.22,3);ctx.fill();
+    // side plate highlight
+    ctx.fillStyle=fl?'#fff':'rgba(255,255,255,0.3)';
+    ctx.fillRect(spX-R*0.045,spY+1,R*0.03,R*0.18);
+  }
 
-  // VISOR (two glowing eyes instead of a bar)
+  // ── VISOR (recessed dark window + glowing eyes + scanline reflection) ──
   const eyeY=sy-R*0.68+totalBob;
-  // left eye
-  ctx.fillStyle=fl?'#fff':'rgba(0,0,0,0.85)';
-  ctx.beginPath();ctx.roundRect(sx-R*0.24,eyeY-R*0.06,R*0.18,R*0.10,3);ctx.fill();
-  ctx.fillStyle=CC;ctx.shadowColor=charDef.color;ctx.shadowBlur=fl?0:10;
-  ctx.globalAlpha=0.95;
-  ctx.beginPath();ctx.roundRect(sx-R*0.22,eyeY-R*0.04,R*0.14,R*0.06,2);ctx.fill();
-  ctx.globalAlpha=1;ctx.shadowBlur=0;
-  // right eye
-  ctx.fillStyle=fl?'#fff':'rgba(0,0,0,0.85)';
-  ctx.beginPath();ctx.roundRect(sx+R*0.06,eyeY-R*0.06,R*0.18,R*0.10,3);ctx.fill();
-  ctx.fillStyle=CC;ctx.shadowColor=charDef.color;ctx.shadowBlur=fl?0:10;
-  ctx.globalAlpha=0.95;
-  ctx.beginPath();ctx.roundRect(sx+R*0.08,eyeY-R*0.04,R*0.14,R*0.06,2);ctx.fill();
-  ctx.globalAlpha=1;ctx.shadowBlur=0;
+  // visor recess (the dark window)
+  ctx.fillStyle=fl?'#fff':'rgba(0,0,0,0.9)';
+  ctx.beginPath();ctx.roundRect(headCX-R*0.30,eyeY-R*0.08,R*0.60,R*0.13,4);ctx.fill();
+  // visor inner gradient (deep)
+  if(!fl){
+    const vG=ctx.createLinearGradient(headCX,eyeY-R*0.08,headCX,eyeY+R*0.05);
+    vG.addColorStop(0,'rgba(0,0,0,0.95)');
+    vG.addColorStop(1,_shade(charDef.color,-0.6));
+    ctx.fillStyle=vG;
+    ctx.beginPath();ctx.roundRect(headCX-R*0.28,eyeY-R*0.07,R*0.56,R*0.11,3);ctx.fill();
+  }
+  // glowing eyes
+  for(let side=-1;side<=1;side+=2){
+    const exC=headCX+side*R*0.16, ey=eyeY-R*0.015;
+    ctx.fillStyle=CCLight;ctx.shadowColor=charDef.color;ctx.shadowBlur=fl?0:12;
+    ctx.beginPath();ctx.roundRect(exC-R*0.07,ey-R*0.025,R*0.14,R*0.055,2);ctx.fill();
+    ctx.shadowBlur=0;
+    // bright core
+    ctx.fillStyle=fl?'#fff':'#ffffff';ctx.globalAlpha=0.85;
+    ctx.beginPath();ctx.roundRect(exC-R*0.05,ey-R*0.018,R*0.10,R*0.025,1.5);ctx.fill();
+    ctx.globalAlpha=1;
+  }
+  // visor reflection scanline (diagonal sheen)
+  if(!fl){
+    ctx.strokeStyle='rgba(255,255,255,0.18)';ctx.lineWidth=1.2;
+    ctx.beginPath();ctx.moveTo(headCX-R*0.26,eyeY-R*0.06);ctx.lineTo(headCX-R*0.10,eyeY+R*0.02);ctx.stroke();
+  }
 
   // character-specific detail (receives sx,sy with bob already applied for body position)
   if(charDef.detail)charDef.detail(ctx,sx,sy+totalBob,bodyAngle,fl);
 
-  // GUN ARM + WEAPON
-  const recoilOff=recoilT*R*0.22; // whole arm+weapon shifts back along aim axis at peak
+  // ── GUN ARM + WEAPON ──────────────────────────────────────
+  const recoilOff=recoilT*R*0.22;
   ctx.save();
   ctx.translate(sx,sy-R*0.08+totalBob);
   ctx.rotate(aimAngle);
-  ctx.translate(-recoilOff,0); // recoil: entire arm system kicks back
-  // back arm
-  ctx.fillStyle=AC;
+  ctx.translate(-recoilOff,0);
+  // back arm with gradient
+  const baG=ctx.createLinearGradient(0,-4,0,4);
+  baG.addColorStop(0,ACLight);baG.addColorStop(1,fl?'#fff':_shade(charDef.accent,-0.3));
+  ctx.fillStyle=baG;
   ctx.beginPath();ctx.roundRect(R*0.04,-4,R*0.52,8,4);ctx.fill();
-  // back hand
+  // back arm bicep ring (accent)
+  ctx.fillStyle=fl?'#fff':CC;
+  ctx.beginPath();ctx.roundRect(R*0.18,-4.5,R*0.06,9,2);ctx.fill();
+  // back hand with subtle glove
+  ctx.fillStyle=DK;
+  ctx.beginPath();ctx.arc(R*0.55,0,5,0,Math.PI*2);ctx.fill();
   ctx.fillStyle=SK;
-  ctx.beginPath();ctx.arc(R*0.55,0,4.5,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.arc(R*0.55,0,3.5,0,Math.PI*2);ctx.fill();
   // WEAPON
   const gunFn=GUN_DRAW[careType]||GUN_DRAW[weaponId]||GUN_DRAW.r301;
   const wDef=careType?CARE_WEAPON_DEFS[careType]:WEAPON_DEFS[weaponId];
   const wCol=wDef?.color||CC;
   gunFn(ctx,fl,wCol,AC,DK,SK);
-  // front arm
-  ctx.fillStyle=AC;
+  // front arm with gradient
+  const faG=ctx.createLinearGradient(0,-3.5,0,3.5);
+  faG.addColorStop(0,ACLight);faG.addColorStop(1,fl?'#fff':_shade(charDef.accent,-0.3));
+  ctx.fillStyle=faG;
   ctx.beginPath();ctx.roundRect(R*0.48,-3.5,R*0.60,6,3);ctx.fill();
-  // front hand
+  // forearm guard
+  ctx.fillStyle=fl?'#fff':AC;
+  ctx.beginPath();ctx.roundRect(R*0.78,-4,R*0.18,8,2);ctx.fill();
+  ctx.fillStyle=fl?'#fff':'rgba(255,255,255,0.25)';
+  ctx.fillRect(R*0.80,-3.5,R*0.14,1.5);
+  // front hand with subtle glove
+  ctx.fillStyle=DK;
+  ctx.beginPath();ctx.arc(R*1.05,0,4.5,0,Math.PI*2);ctx.fill();
   ctx.fillStyle=SK;
-  ctx.beginPath();ctx.arc(R*1.05,0,4,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.arc(R*1.05,0,3,0,Math.PI*2);ctx.fill();
   ctx.restore();
 
   if(extraDraw)extraDraw();
@@ -7382,12 +7551,49 @@ const UI={
   update(dt){this._killFeed.forEach(k=>k.t-=dt);this._killFeed=this._killFeed.filter(k=>k.t>0);if(this._announce){this._announce.t-=dt;if(this._announce.t<=0)this._announce=null;}},
   announce(text,dur=2.5,color='#44ffff'){this._announce={text,t:dur,maxT:dur,color};},
   panel(x,y,w,h,r=8,fillA=0.78){
+    // Drop shadow (soft, offset down/right)
+    ctx.fillStyle='rgba(0,0,0,0.45)';
+    ctx.beginPath();ctx.roundRect(x+3,y+5,w,h,r);ctx.fill();
+    // Multi-stop gradient body — deep navy with subtle violet shift
     const g=ctx.createLinearGradient(x,y,x,y+h);
-    g.addColorStop(0,`rgba(15,18,40,${fillA})`);g.addColorStop(1,`rgba(5,5,18,${fillA})`);
-    ctx.fillStyle=g;ctx.strokeStyle='rgba(120,140,200,0.18)';ctx.lineWidth=1;
-    ctx.beginPath();ctx.roundRect(x,y,w,h,r);ctx.fill();ctx.stroke();
-    // top highlight line
-    ctx.strokeStyle='rgba(120,160,220,0.12)';ctx.beginPath();ctx.moveTo(x+r,y+1);ctx.lineTo(x+w-r,y+1);ctx.stroke();
+    g.addColorStop(0,`rgba(28,32,58,${fillA})`);
+    g.addColorStop(0.45,`rgba(16,18,40,${fillA})`);
+    g.addColorStop(1,`rgba(6,6,18,${fillA})`);
+    ctx.fillStyle=g;
+    ctx.beginPath();ctx.roundRect(x,y,w,h,r);ctx.fill();
+    // Inner glass tint (subtle radial highlight from upper-left)
+    const rg=ctx.createRadialGradient(x+w*0.25,y+h*0.15,r,x+w*0.25,y+h*0.15,Math.max(w,h)*0.7);
+    rg.addColorStop(0,'rgba(120,160,230,0.10)');
+    rg.addColorStop(1,'rgba(120,160,230,0)');
+    ctx.fillStyle=rg;
+    ctx.beginPath();ctx.roundRect(x,y,w,h,r);ctx.fill();
+    // Outer border (two layers for depth)
+    ctx.strokeStyle='rgba(140,170,230,0.30)';ctx.lineWidth=1.2;
+    ctx.beginPath();ctx.roundRect(x+0.5,y+0.5,w-1,h-1,r);ctx.stroke();
+    ctx.strokeStyle='rgba(0,0,0,0.5)';ctx.lineWidth=1;
+    ctx.beginPath();ctx.roundRect(x-0.5,y-0.5,w+1,h+1,r+1);ctx.stroke();
+    // Top specular highlight (the "glass shine")
+    const sh=ctx.createLinearGradient(x,y,x,y+Math.min(20,h*0.4));
+    sh.addColorStop(0,'rgba(180,200,255,0.22)');
+    sh.addColorStop(1,'rgba(180,200,255,0)');
+    ctx.fillStyle=sh;
+    ctx.beginPath();ctx.roundRect(x+2,y+1,w-4,Math.min(18,h*0.35),r-1);ctx.fill();
+    // Bright top-edge line
+    ctx.strokeStyle='rgba(180,210,255,0.35)';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(x+r+2,y+1);ctx.lineTo(x+w-r-2,y+1);ctx.stroke();
+    // Corner accent ticks (sci-fi UI corner brackets)
+    ctx.strokeStyle='rgba(160,200,255,0.35)';ctx.lineWidth=1.5;ctx.lineCap='round';
+    const tk=Math.min(8,r+3);
+    ctx.beginPath();
+    // top-left
+    ctx.moveTo(x+r,y+r-tk*0.3);ctx.lineTo(x+r-tk*0.3,y+r);
+    // top-right
+    ctx.moveTo(x+w-r,y+r-tk*0.3);ctx.lineTo(x+w-r+tk*0.3,y+r);
+    // bottom-left
+    ctx.moveTo(x+r,y+h-r+tk*0.3);ctx.lineTo(x+r-tk*0.3,y+h-r);
+    // bottom-right
+    ctx.moveTo(x+w-r,y+h-r+tk*0.3);ctx.lineTo(x+w-r+tk*0.3,y+h-r);
+    ctx.stroke();
   },
 
   // ── CHARACTER SELECT ──
