@@ -472,17 +472,28 @@ const TouchControls={
     // Stick labels
     ctx.globalAlpha=0.38;ctx.fillStyle='#fff';ctx.font='11px monospace';ctx.textAlign='center';
     ctx.fillText('MOVE',lc.x,lc.y+R+14);ctx.fillText('FIRE',rc.x,rc.y+R+14);
-    // Ability buttons
-    const _btn=(p,label,col)=>{
-      ctx.globalAlpha=0.5;ctx.beginPath();ctx.arc(p.x,p.y,btnR,0,Math.PI*2);
-      ctx.strokeStyle=col;ctx.lineWidth=2;ctx.stroke();
-      ctx.globalAlpha=0.15;ctx.fillStyle=col;ctx.fill();
-      ctx.globalAlpha=0.8;ctx.fillStyle=col;ctx.font='bold 13px monospace';ctx.textAlign='center';
+    // Ability buttons — glow + pulse when the ability or ult is ready to fire
+    const _btn=(p,label,col,ready,flash)=>{
+      const pulse=ready?(0.5+0.5*Math.sin(performance.now()*0.006)):0;
+      const flashF=Math.max(0,Math.min(1,(flash||0)/1.6));
+      if(ready){
+        ctx.shadowColor=col;ctx.shadowBlur=22+18*pulse+45*flashF;
+      }
+      ctx.globalAlpha=ready?(0.75+0.2*pulse):0.5;
+      ctx.beginPath();ctx.arc(p.x,p.y,btnR,0,Math.PI*2);
+      ctx.strokeStyle=col;ctx.lineWidth=ready?3.5:2;ctx.stroke();
+      ctx.shadowBlur=0;
+      ctx.globalAlpha=ready?(0.32+0.2*pulse):0.15;ctx.fillStyle=col;ctx.fill();
+      ctx.globalAlpha=ready?1:0.8;ctx.fillStyle=col;
+      ctx.font=ready?'bold 16px monospace':'bold 13px monospace';ctx.textAlign='center';
       ctx.fillText(label,p.x,p.y+5);
     };
-    _btn(qc,'Q','#44aaff');
-    _btn(rlc,'R','#ffaa44');
-    _btn(fc,'F','#dd44ff');
+    const pl=(typeof Game!=='undefined')?Game.player:null;
+    const qReady=!!(pl&&pl.qCD<=0&&pl.charDef&&pl.charDef.qName);
+    const ultReady=!!(pl&&pl.apexUlt&&pl.ultCD<=0);
+    _btn(qc,'Q','#44aaff',qReady,pl?pl._qReadyFlash:0);
+    _btn(rlc,'R','#ffaa44',false,0);
+    _btn(fc,'F','#dd44ff',ultReady,pl?pl._ultReadyFlash:0);
     ctx.restore();
   }
 };
@@ -6546,11 +6557,24 @@ class Player{
     if(this.shootCD>0)this.shootCD-=dt;
     if(this._recoilT>0)this._recoilT-=dt*8; // decay fast
     if(this.flashT>0)this.flashT-=dt;
+    // Track readiness transitions so we can play a sound + flash when the ability fills
+    const _qWasReady=this.qCD<=0;
     if(this.qCD>0)this.qCD-=dt;
+    if(!_qWasReady&&this.qCD<=0){
+      this._qReadyFlash=1.6;
+      try{AudioManager.play('ult_ready');}catch(_){}
+    }
+    if(this._qReadyFlash>0)this._qReadyFlash-=dt;
     if(this.qActive){this.qDur-=dt;if(this.qDur<=0)this.qActive=false;}
     if(this.shieldT>0)this.shieldT-=dt;
     if(this.shieldCD>0)this.shieldCD-=dt;
+    const _uWasReady=this.ultCD<=0;
     if(this.ultCD>0)this.ultCD-=dt;
+    if(this.apexUlt&&!_uWasReady&&this.ultCD<=0){
+      this._ultReadyFlash=2.2;
+      try{AudioManager.play('ult_ready');}catch(_){}
+    }
+    if(this._ultReadyFlash>0)this._ultReadyFlash-=dt;
     if(this.ultBoostT>0)this.ultBoostT-=dt;
     if(this.ultInvT>0)this.ultInvT-=dt;
     if(this.ultDmgBoost>0)this.ultDmgBoost-=dt;
@@ -7668,7 +7692,7 @@ const UI={
     // Q ability
     const qReady=player.qCD<=0;
     const qProg=qReady?1:1-(player.qCD/14);
-    this._drawAbilitySlot(px,py+102,'Q',player.charDef.qName,qReady?'READY':player.qCD.toFixed(1)+'s',player.charDef.color,qProg,player.qActive);
+    this._drawAbilitySlot(px,py+102,'Q',player.charDef.qName,qReady?'READY':player.qCD.toFixed(1)+'s',player.charDef.color,qProg,player.qActive,false,false,player._qReadyFlash);
     // Weapon — mag / reserve display
     const w=player.careWeapon||player.weapon;
     const magPct=w.mag/w.magSize;
@@ -7684,7 +7708,7 @@ const UI={
     if(hasUlt){
       const u=player.apexUlt;
       const uReady=player.ultCD<=0,uProg=uReady?1:1-(player.ultCD/u.cd);
-      this._drawAbilitySlot(px,py+176,'F',u.name,uReady?'READY':player.ultCD.toFixed(1)+'s',u.color,uProg,uReady);
+      this._drawAbilitySlot(px,py+176,'F',u.name,uReady?'READY':player.ultCD.toFixed(1)+'s',u.color,uProg,uReady,false,false,player._ultReadyFlash);
     }
     // upgrade count
     let totalStacks=0;player.upgrades.forEach(v=>totalStacks+=v);
@@ -7810,7 +7834,7 @@ const UI={
     // Q slot (mirror layout)
     const qReady=player.qCD<=0;
     const qProg=qReady?1:1-(player.qCD/14);
-    this._drawAbilitySlot(px,py+102,'Q/□',player.charDef.qName,qReady?'READY':player.qCD.toFixed(1)+'s',player.charDef.color,qProg,player.qActive);
+    this._drawAbilitySlot(px,py+102,'Q/□',player.charDef.qName,qReady?'READY':player.qCD.toFixed(1)+'s',player.charDef.color,qProg,player.qActive,false,false,player._qReadyFlash);
     // Weapon slot
     const w=player.careWeapon||player.weapon;
     const magPct=w.mag/w.magSize;
@@ -7822,7 +7846,7 @@ const UI={
     if(hasUlt){
       const u=player.apexUlt;
       const uReady=player.ultCD<=0,uProg=uReady?1:1-(player.ultCD/u.cd);
-      this._drawAbilitySlot(px,py+176,'F/△',u.name,uReady?'READY':player.ultCD.toFixed(1)+'s',u.color,uProg,uReady);
+      this._drawAbilitySlot(px,py+176,'F/△',u.name,uReady?'READY':player.ultCD.toFixed(1)+'s',u.color,uProg,uReady,false,false,player._ultReadyFlash);
     }
     // upgrades count
     let totalStacks=0;player.upgrades.forEach(v=>totalStacks+=v);
@@ -7910,9 +7934,18 @@ const UI={
     ctx.fillText(`🥝 ${Save.data.kiwis}`,cx+150,42);ctx.shadowBlur=0;
     ctx.textAlign='left';
   },
-  _drawAbilitySlot(x,y,key,name,status,color,progress,active,isAmmo,isCare){
-    ctx.fillStyle=active?color:'#1c1c2e';ctx.strokeStyle=color;ctx.lineWidth=isCare?2.5:1.5;
+  _drawAbilitySlot(x,y,key,name,status,color,progress,active,isAmmo,isCare,readyFlash){
+    // When an ability/ult slot has fully recharged (progress=1 and not ammo),
+    // pulse a glow around the icon. readyFlash gives an extra burst right after it fills.
+    const isReady=!isAmmo&&progress>=1;
+    ctx.fillStyle=active?color:'#1c1c2e';ctx.strokeStyle=color;
+    ctx.lineWidth=isCare?2.5:(isReady?2.5:1.5);
     if(isCare){ctx.shadowColor=color;ctx.shadowBlur=10;}
+    else if(isReady){
+      const pulse=0.5+0.5*Math.sin(performance.now()*0.006);
+      const flash=Math.max(0,Math.min(1,(readyFlash||0)/1.6));
+      ctx.shadowColor=color;ctx.shadowBlur=10+7*pulse+22*flash;
+    }
     ctx.beginPath();ctx.roundRect(x,y,24,24,4);ctx.fill();ctx.stroke();ctx.shadowBlur=0;
     ctx.fillStyle=active?'#000':color;ctx.font='bold 12px monospace';ctx.textAlign='center';
     ctx.fillText(key,x+12,y+16);ctx.textAlign='left';
