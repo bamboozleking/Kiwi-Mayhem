@@ -5,7 +5,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" content="#06060c">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -37,7 +37,8 @@
 </script>
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
-  body { background:#06060c; display:flex; justify-content:center; align-items:center; height:100vh; overflow:hidden; font-family:monospace; }
+  html, body { width:100vw; height:100vh; height:100dvh; }
+  body { background:#06060c; display:flex; justify-content:center; align-items:center; overflow:hidden; font-family:monospace; position:fixed; inset:0; }
   canvas { display:block; cursor:none; touch-action:none; }
 </style>
 </head>
@@ -53,12 +54,23 @@ const ctx=canvas.getContext('2d');
 const VIRTUAL_W=1920, VIRTUAL_H=1080;
 canvas.width=VIRTUAL_W;canvas.height=VIRTUAL_H;
 function _fitCanvas(){
-  const vw=window.innerWidth, vh=window.innerHeight;
+  // Use visualViewport when available (more accurate on iOS), fall back to window.
+  const vp=window.visualViewport;
+  const vw=vp?vp.width:window.innerWidth;
+  const vh=vp?vp.height:window.innerHeight;
   const s=Math.min(vw/VIRTUAL_W, vh/VIRTUAL_H);
   canvas.style.width=(VIRTUAL_W*s)+'px';
   canvas.style.height=(VIRTUAL_H*s)+'px';
 }
 _fitCanvas();
+// Extra resize hooks for iOS PWA / Safari quirks
+if(window.visualViewport){
+  window.visualViewport.addEventListener('resize',_fitCanvas);
+  window.visualViewport.addEventListener('scroll',_fitCanvas);
+}
+// Re-fit after first paint (iOS sometimes reports wrong size on initial load)
+setTimeout(_fitCanvas,100);
+setTimeout(_fitCanvas,500);
 // Convert client (CSS pixel) coords to canvas (virtual pixel) coords
 function _toCanvas(cx,cy){
   const r=canvas.getBoundingClientRect();
@@ -153,7 +165,7 @@ const Camera={
 
 // ─── INPUT ─────────────────────────────────────────────────────
 const Input={
-  keys:{},mouse:{x:0,y:0,down:false},justPressed:new Set(),mouseJustPressed:false,clickPos:null,
+  keys:{},mouse:{x:0,y:0,down:false},justPressed:new Set(),mouseJustPressed:false,clickPos:null,wheel:0,
   init(){
     if(this._inited)return;this._inited=true;
     window.addEventListener('keydown',e=>{
@@ -179,10 +191,12 @@ const Input={
     canvas.addEventListener('mousedown',e=>{if(e.button===0){const p=_toCanvas(e.clientX,e.clientY);this.mouse.down=true;this.mouseJustPressed=true;this.clickPos=p;}});
     canvas.addEventListener('mouseup',e=>{if(e.button===0)this.mouse.down=false;});
     canvas.addEventListener('contextmenu',e=>e.preventDefault());
+    // Mouse wheel — for scrollable menus (codex, etc.)
+    canvas.addEventListener('wheel',e=>{this.wheel=e.deltaY;e.preventDefault();},{passive:false});
   },
   wasPressed(c){return this.justPressed.has(c);},
   consumeClick(){const p=this.clickPos;this.clickPos=null;return p;},
-  flush(){this.justPressed.clear();this.mouseJustPressed=false;Gamepads.flush();}
+  flush(){this.justPressed.clear();this.mouseJustPressed=false;this.wheel=0;Gamepads.flush();}
 };
 
 // ─── GAMEPADS (PS5 / generic) ──────────────────────────────────
@@ -566,6 +580,13 @@ const TouchControls={
           continue;
         }
       }
+      // CODEX: track touch for drag-to-scroll
+      if(typeof Game!=='undefined'&&Game.state==='codex'&&typeof UI!=='undefined'&&UI._codexContentRect){
+        const r=UI._codexContentRect;
+        if(p.x>=r.x&&p.x<=r.x+r.w&&p.y>=r.y&&p.y<=r.y+r.h){
+          this._codexTouchId=t.identifier;this._codexTouchY=p.y;this._codexTouchStartY=p.y;
+        }
+      }
       // Menus: emulate click tap
       if(typeof Game!=='undefined'&&Game.state!=='playing'){
         Input.mouse.x=p.x;Input.mouse.y=p.y;
@@ -600,6 +621,12 @@ const TouchControls={
         const dx=p.x-this.rOrigin.x,dy=p.y-this.rOrigin.y,d=Math.sqrt(dx*dx+dy*dy)||1;
         const m=Math.min(d/this.R,1);this.rx=(dx/d)*m;this.ry=(dy/d)*m;
       }
+      // CODEX: drag-to-scroll inside the content area
+      if(typeof Game!=='undefined'&&Game.state==='codex'&&t.identifier===this._codexTouchId&&this._codexTouchY!=null){
+        const dy=this._codexTouchY-p.y;
+        if(typeof UI!=='undefined')UI._codexScroll=Math.max(0,Math.min(UI._codexMaxScroll||0,(UI._codexScroll||0)+dy));
+        this._codexTouchY=p.y;
+      }
     }
   },
   _end(e){
@@ -607,6 +634,7 @@ const TouchControls={
       if(t.identifier===this.lId){this.lId=-1;this.lOrigin=null;this.lx=0;this.ly=0;}
       if(t.identifier===this.rId){this.rId=-1;this.rOrigin=null;this.rx=0;this.ry=0;this.rActive=false;}
       if(t.identifier===this.fireBtnTouchId){this.fireBtnDown=false;this.fireBtnTouchId=-1;}
+      if(t.identifier===this._codexTouchId){this._codexTouchId=-1;this._codexTouchY=null;}
     }
   },
   apply(){
@@ -10233,10 +10261,20 @@ const UI={
     // Content area
     const conX=80,conY=200,conW=canvas.width-160,conH=canvas.height-280;
     this.panel(conX,conY,conW,conH,12,0.82);
+    // Compute scroll bounds before clipping
+    const items=this._codexItems(this._codexTab);
+    const cols=5,cellW=Math.floor((conW-40)/cols),cellH=140;
+    const rows=Math.ceil(items.length/cols);
+    const totalH=rows*cellH+40;
+    const visibleH=conH-20;
+    const maxScroll=Math.max(0,totalH-visibleH);
+    this._codexMaxScroll=maxScroll;
+    this._codexScroll=Math.max(0,Math.min(maxScroll,this._codexScroll||0));
+    const scrollY=this._codexScroll;
+    // Save content rect for hit-testing scroll gestures
+    this._codexContentRect={x:conX,y:conY,w:conW,h:conH};
     // Clipping region for content
     ctx.save();ctx.beginPath();ctx.roundRect(conX+8,conY+8,conW-16,conH-16,8);ctx.clip();
-    const items=this._codexItems(this._codexTab);
-    const cols=5,cellW=Math.floor((conW-40)/cols),cellH=140,scrollY=this._codexScroll;
     items.forEach((it,i)=>{
       const col=i%cols,row=Math.floor(i/cols);
       const x=conX+20+col*cellW,y=conY+20+row*cellH-scrollY;
@@ -10287,6 +10325,41 @@ const UI={
       }
     });
     ctx.restore();
+    // SCROLLBAR — visible track + thumb on the right edge of content
+    if(maxScroll>0){
+      const sbX=conX+conW-22,sbY=conY+16,sbW=10,sbH=conH-32;
+      // Track
+      ctx.fillStyle='rgba(0,0,0,0.55)';
+      ctx.beginPath();ctx.roundRect(sbX,sbY,sbW,sbH,5);ctx.fill();
+      ctx.strokeStyle='rgba(255,180,140,0.25)';ctx.lineWidth=1;
+      ctx.beginPath();ctx.roundRect(sbX,sbY,sbW,sbH,5);ctx.stroke();
+      // Thumb
+      const thumbH=Math.max(40,sbH*(visibleH/totalH));
+      const thumbY=sbY+(sbH-thumbH)*(scrollY/maxScroll);
+      ctx.fillStyle='rgba(255,170,100,0.85)';ctx.shadowColor='#ffaa66';ctx.shadowBlur=8;
+      ctx.beginPath();ctx.roundRect(sbX+1,thumbY,sbW-2,thumbH,4);ctx.fill();
+      ctx.shadowBlur=0;
+    }
+    // SCROLL UP/DOWN BUTTONS — large tap targets for mobile
+    if(maxScroll>0){
+      const sUp={x:conX+conW-44,y:conY+24};
+      const sDn={x:conX+conW-44,y:conY+conH-24};
+      const _arrow=(p,label,canScroll)=>{
+        ctx.globalAlpha=canScroll?0.85:0.3;
+        ctx.fillStyle='rgba(40,20,20,0.9)';ctx.strokeStyle='#ffaa66';ctx.lineWidth=1.5;
+        ctx.beginPath();ctx.arc(p.x,p.y,18,0,Math.PI*2);ctx.fill();ctx.stroke();
+        ctx.fillStyle='#ffaa66';ctx.font='bold 18px monospace';ctx.textAlign='center';
+        ctx.fillText(label,p.x,p.y+6);
+        ctx.globalAlpha=1;
+      };
+      _arrow(sUp,'▲',scrollY>0);
+      _arrow(sDn,'▼',scrollY<maxScroll);
+      this._codexScrollUpRect={x:sUp.x-20,y:sUp.y-20,w:40,h:40};
+      this._codexScrollDnRect={x:sDn.x-20,y:sDn.y-20,w:40,h:40};
+    } else {
+      this._codexScrollUpRect=null;
+      this._codexScrollDnRect=null;
+    }
     // Counters at bottom
     const total=items.length,unlk=items.filter(i=>i.unlocked).length;
     ctx.fillStyle='rgba(255,200,150,0.7)';ctx.font='bold 14px monospace';ctx.textAlign='center';
@@ -10378,6 +10451,8 @@ const UI={
   getCodexClick(mx,my){
     if(this._codexBackRect){const r=this._codexBackRect;if(mx>=r.x&&mx<=r.x+r.w&&my>=r.y&&my<=r.y+r.h)return {kind:'back'};}
     if(this._codexTabRects){for(const t of this._codexTabRects){if(mx>=t.x&&mx<=t.x+t.w&&my>=t.y&&my<=t.y+t.h)return {kind:'tab',id:t.id};}}
+    if(this._codexScrollUpRect){const r=this._codexScrollUpRect;if(mx>=r.x&&mx<=r.x+r.w&&my>=r.y&&my<=r.y+r.h)return {kind:'scrollUp'};}
+    if(this._codexScrollDnRect){const r=this._codexScrollDnRect;if(mx>=r.x&&mx<=r.x+r.w&&my>=r.y&&my<=r.y+r.h)return {kind:'scrollDown'};}
     return null;
   },
 
@@ -11521,7 +11596,13 @@ const Game={
         const a=UI.getCodexClick(click.x,click.y);
         if(a&&a.kind==='back'){AudioManager.play('click');this.state='main_menu';}
         else if(a&&a.kind==='tab'){AudioManager.play('click');UI._codexTab=a.id;UI._codexScroll=0;}
+        else if(a&&a.kind==='scrollUp'){UI._codexScroll=Math.max(0,(UI._codexScroll||0)-280);}
+        else if(a&&a.kind==='scrollDown'){UI._codexScroll=Math.min(UI._codexMaxScroll||0,(UI._codexScroll||0)+280);}
       }
+      // Keyboard / mouse wheel scroll
+      if(Input.wheel)UI._codexScroll=Math.max(0,Math.min(UI._codexMaxScroll||0,(UI._codexScroll||0)+Input.wheel));
+      if(Input.wasPressed('ArrowDown')||Input.wasPressed('PageDown'))UI._codexScroll=Math.min(UI._codexMaxScroll||0,(UI._codexScroll||0)+140);
+      if(Input.wasPressed('ArrowUp')||Input.wasPressed('PageUp'))UI._codexScroll=Math.max(0,(UI._codexScroll||0)-140);
       if(Input.wasPressed('Escape')){AudioManager.play('click');this.state='main_menu';}
     } else if(this.state==='online_menu'){
       ctx.clearRect(0,0,canvas.width,canvas.height);
