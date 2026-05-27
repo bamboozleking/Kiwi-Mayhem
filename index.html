@@ -472,21 +472,50 @@ const TouchControls={
     // Stick labels
     ctx.globalAlpha=0.38;ctx.fillStyle='#fff';ctx.font='11px monospace';ctx.textAlign='center';
     ctx.fillText('MOVE',lc.x,lc.y+R+14);ctx.fillText('FIRE',rc.x,rc.y+R+14);
-    // Ability buttons — glow + pulse when the ability or ult is ready to fire
+    // Ability buttons — when ready: solid color fill, white border, big glow,
+    // expanding sonar rings, bouncing size, and a "READY" tag below.
     const _btn=(p,label,col,ready,flash)=>{
-      const pulse=ready?(0.5+0.5*Math.sin(performance.now()*0.006)):0;
+      const pulse=ready?(0.5+0.5*Math.sin(performance.now()*0.007)):0;
       const flashF=Math.max(0,Math.min(1,(flash||0)/1.6));
       if(ready){
-        ctx.shadowColor=col;ctx.shadowBlur=22+18*pulse+45*flashF;
+        // Two expanding sonar rings, offset in phase
+        for(let i=0;i<2;i++){
+          const t=((performance.now()+i*500)%1200)/1200;
+          ctx.save();
+          ctx.globalAlpha=(1-t)*0.55;
+          ctx.strokeStyle=col;ctx.lineWidth=4;
+          ctx.beginPath();ctx.arc(p.x,p.y,btnR+8+t*55,0,Math.PI*2);ctx.stroke();
+          ctx.restore();
+        }
+        // Bouncing button size when freshly ready
+        const bounce=1+0.08*pulse+0.18*flashF;
+        const R2=btnR*bounce;
+        // Huge outer glow
+        ctx.shadowColor=col;ctx.shadowBlur=35+25*pulse+70*flashF;
+        // Solid filled background
+        ctx.globalAlpha=0.92;ctx.fillStyle=col;
+        ctx.beginPath();ctx.arc(p.x,p.y,R2,0,Math.PI*2);ctx.fill();
+        ctx.shadowBlur=0;
+        // Bright white border ring
+        ctx.globalAlpha=1;ctx.strokeStyle='#ffffff';ctx.lineWidth=5;
+        ctx.beginPath();ctx.arc(p.x,p.y,R2,0,Math.PI*2);ctx.stroke();
+        // Big bold black label for contrast against bright fill
+        ctx.globalAlpha=1;ctx.fillStyle='#000000';
+        ctx.font='bold 26px monospace';ctx.textAlign='center';
+        ctx.fillText(label,p.x,p.y+9);
+        // "READY" tag below
+        ctx.fillStyle=col;ctx.shadowColor=col;ctx.shadowBlur=12;
+        ctx.font='bold 13px monospace';
+        ctx.fillText('READY',p.x,p.y+btnR+22);ctx.shadowBlur=0;
+      } else {
+        // Dim outline when on cooldown
+        ctx.globalAlpha=0.5;ctx.beginPath();ctx.arc(p.x,p.y,btnR,0,Math.PI*2);
+        ctx.strokeStyle=col;ctx.lineWidth=2;ctx.stroke();
+        ctx.globalAlpha=0.15;ctx.fillStyle=col;ctx.fill();
+        ctx.globalAlpha=0.8;ctx.fillStyle=col;
+        ctx.font='bold 13px monospace';ctx.textAlign='center';
+        ctx.fillText(label,p.x,p.y+5);
       }
-      ctx.globalAlpha=ready?(0.75+0.2*pulse):0.5;
-      ctx.beginPath();ctx.arc(p.x,p.y,btnR,0,Math.PI*2);
-      ctx.strokeStyle=col;ctx.lineWidth=ready?3.5:2;ctx.stroke();
-      ctx.shadowBlur=0;
-      ctx.globalAlpha=ready?(0.32+0.2*pulse):0.15;ctx.fillStyle=col;ctx.fill();
-      ctx.globalAlpha=ready?1:0.8;ctx.fillStyle=col;
-      ctx.font=ready?'bold 16px monospace':'bold 13px monospace';ctx.textAlign='center';
-      ctx.fillText(label,p.x,p.y+5);
     };
     const pl=(typeof Game!=='undefined')?Game.player:null;
     const qReady=!!(pl&&pl.qCD<=0&&pl.charDef&&pl.charDef.qName);
@@ -7936,27 +7965,45 @@ const UI={
   },
   _drawAbilitySlot(x,y,key,name,status,color,progress,active,isAmmo,isCare,readyFlash){
     // When an ability/ult slot has fully recharged (progress=1 and not ammo),
-    // pulse a glow around the icon. readyFlash gives an extra burst right after it fills.
+    // pulse + flash + sonar-ring + bright fill so it can't be missed.
     const isReady=!isAmmo&&progress>=1;
-    ctx.fillStyle=active?color:'#1c1c2e';ctx.strokeStyle=color;
-    ctx.lineWidth=isCare?2.5:(isReady?2.5:1.5);
+    const pulse=isReady?(0.5+0.5*Math.sin(performance.now()*0.007)):0;
+    const flash=Math.max(0,Math.min(1,(readyFlash||0)/1.6));
+    // Expanding outer sonar ring when ready
+    if(isReady){
+      const t=(performance.now()%1100)/1100;
+      ctx.save();
+      ctx.globalAlpha=(1-t)*0.65;
+      ctx.strokeStyle=color;ctx.lineWidth=2.5;
+      ctx.beginPath();ctx.arc(x+12,y+12,12+t*16,0,Math.PI*2);ctx.stroke();
+      ctx.restore();
+    }
+    // Slot fills with the ability color when ready (bright background, not dark)
+    if(isReady){ctx.fillStyle=color;}
+    else {ctx.fillStyle=active?color:'#1c1c2e';}
+    ctx.strokeStyle=isReady?'#ffffff':color;
+    ctx.lineWidth=isCare?2.5:(isReady?3:1.5);
     if(isCare){ctx.shadowColor=color;ctx.shadowBlur=10;}
     else if(isReady){
-      const pulse=0.5+0.5*Math.sin(performance.now()*0.006);
-      const flash=Math.max(0,Math.min(1,(readyFlash||0)/1.6));
-      ctx.shadowColor=color;ctx.shadowBlur=10+7*pulse+22*flash;
+      ctx.shadowColor=color;ctx.shadowBlur=14+10*pulse+30*flash;
     }
     ctx.beginPath();ctx.roundRect(x,y,24,24,4);ctx.fill();ctx.stroke();ctx.shadowBlur=0;
-    ctx.fillStyle=active?'#000':color;ctx.font='bold 12px monospace';ctx.textAlign='center';
-    ctx.fillText(key,x+12,y+16);ctx.textAlign='left';
+    ctx.fillStyle=(active||isReady)?'#000':color;ctx.font=isReady?'bold 14px monospace':'bold 12px monospace';ctx.textAlign='center';
+    ctx.fillText(key,x+12,y+17);ctx.textAlign='left';
     if(progress<1&&progress>0&&!isAmmo){
       ctx.strokeStyle=color;ctx.lineWidth=2.5;
       ctx.beginPath();ctx.arc(x+12,y+12,12,-Math.PI/2,-Math.PI/2+Math.PI*2*progress);ctx.stroke();
     }
     ctx.fillStyle='#ccc';ctx.font='10px monospace';
     ctx.fillText(name,x+32,y+9);
-    ctx.fillStyle=color;ctx.font='bold 11px monospace';
-    ctx.fillText(status,x+32,y+22);
+    if(isReady){
+      ctx.fillStyle='#fff';ctx.shadowColor=color;ctx.shadowBlur=8+6*pulse;
+      ctx.font='bold 12px monospace';
+      ctx.fillText(status,x+32,y+22);ctx.shadowBlur=0;
+    } else {
+      ctx.fillStyle=color;ctx.font='bold 11px monospace';
+      ctx.fillText(status,x+32,y+22);
+    }
     if(isAmmo){
       const bw=210,aw=bw-32,ah=4;
       ctx.fillStyle='rgba(0,0,0,0.5)';ctx.beginPath();ctx.roundRect(x+32,y+26,aw,ah,2);ctx.fill();
