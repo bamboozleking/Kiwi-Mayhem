@@ -268,24 +268,39 @@ const Gamepads={
 // ─── TOUCH CONTROLS ────────────────────────────────────────────
 const TouchControls={
   on:('ontouchstart' in window)||navigator.maxTouchPoints>0,
+  _used:false,
   lId:-1,lOrigin:null,lx:0,ly:0,
   rId:-1,rOrigin:null,rx:0,ry:0,rActive:false,rJust:false,
-  R:68,r:26,E:22,
+  R:68,r:26,E:22,btnR:26,
+  // Computed positions (dynamic, based on canvas size at call time)
+  _lc(){return{x:this.R+this.E,y:canvas.height-this.R-this.E};},
+  _rc(){return{x:canvas.width-this.R-this.E,y:canvas.height-this.R-this.E};},
+  _qc(){const l=this._lc();return{x:l.x,y:l.y-this.R-this.btnR-10};},
+  _rlc(){const l=this._lc();return{x:l.x+this.btnR*2+10,y:l.y-this.R-this.btnR-10};},
+  _fc(){const r=this._rc();return{x:r.x,y:r.y-this.R-this.btnR-10};},
+  _hit(tx,ty,p){const dx=tx-p.x,dy=ty-p.y,hr=this.btnR+12;return dx*dx+dy*dy<hr*hr;},
   init(){
     if(!this.on)return;
-    const opts={passive:false};
-    canvas.addEventListener('touchstart',e=>{e.preventDefault();this._start(e);},opts);
-    canvas.addEventListener('touchmove', e=>{e.preventDefault();this._move(e);},opts);
-    canvas.addEventListener('touchend',  e=>{e.preventDefault();this._end(e);},opts);
-    canvas.addEventListener('touchcancel',e=>{e.preventDefault();this._end(e);},opts);
+    const o={passive:false};
+    canvas.addEventListener('touchstart',e=>{e.preventDefault();this._start(e);},o);
+    canvas.addEventListener('touchmove', e=>{e.preventDefault();this._move(e);},o);
+    canvas.addEventListener('touchend',  e=>{e.preventDefault();this._end(e);},o);
+    canvas.addEventListener('touchcancel',e=>{e.preventDefault();this._end(e);},o);
   },
   _start(e){
+    this._used=true;
     for(const t of e.changedTouches){
+      // Menus: emulate click tap
       if(typeof Game!=='undefined'&&Game.state!=='playing'){
         Input.mouse.x=t.clientX;Input.mouse.y=t.clientY;
         Input.mouseJustPressed=true;Input.clickPos={x:t.clientX,y:t.clientY};
         continue;
       }
+      // Ability buttons checked before joystick zones
+      if(this._hit(t.clientX,t.clientY,this._qc())){Input.justPressed.add('KeyQ');continue;}
+      if(this._hit(t.clientX,t.clientY,this._rlc())){Input.justPressed.add('KeyR');continue;}
+      if(this._hit(t.clientX,t.clientY,this._fc())){Input.justPressed.add('KeyF');continue;}
+      // Joystick zones: left half = move, right half = aim/fire
       if(t.clientX<canvas.width/2){
         if(this.lId===-1){this.lId=t.identifier;this.lOrigin={x:t.clientX,y:t.clientY};this.lx=0;this.ly=0;}
       } else {
@@ -312,37 +327,62 @@ const TouchControls={
     }
   },
   apply(){
-    if(!this.on)return;
-    const D=0.2;
-    Input.keys['KeyW']=!!(Input.keys['KeyW']||(this.ly<-D));
-    Input.keys['KeyA']=!!(Input.keys['KeyA']||(this.lx<-D));
-    Input.keys['KeyS']=!!(Input.keys['KeyS']||(this.ly>D));
-    Input.keys['KeyD']=!!(Input.keys['KeyD']||(this.lx>D));
-    if(this.rActive&&typeof Game!=='undefined'&&Game.player){
-      const px=Camera.sx(Game.player.x),py=Camera.sy(Game.player.y);
-      Input.mouse.x=px+this.rx*200;Input.mouse.y=py+this.ry*200;
+    if(!this.on||!this._used)return;
+    // When not in gameplay, clear injected state so keys don't stick across state transitions
+    if(typeof Game==='undefined'||Game.state!=='playing'){
+      Input.keys['KeyW']=Input.keys['KeyA']=Input.keys['KeyS']=Input.keys['KeyD']=false;
+      Input.mouse.down=false;
+      return;
     }
-    if(this.rActive)Input.mouse.down=true;
+    const D=0.2;
+    // Direct assignment (no OR) — keys clear immediately when finger lifts
+    Input.keys['KeyW']=this.ly<-D;
+    Input.keys['KeyA']=this.lx<-D;
+    Input.keys['KeyS']=this.ly>D;
+    Input.keys['KeyD']=this.lx>D;
+    // Aim: right stick when active; otherwise aim in movement direction to avoid snapping to (0,0)
+    if(typeof Game!=='undefined'&&Game.player){
+      const px=Camera.sx(Game.player.x),py=Camera.sy(Game.player.y);
+      if(this.rActive){
+        Input.mouse.x=px+this.rx*200;Input.mouse.y=py+this.ry*200;
+      } else if(this.lId!==-1&&(Math.abs(this.lx)>0.1||Math.abs(this.ly)>0.1)){
+        Input.mouse.x=px+this.lx*200;Input.mouse.y=py+this.ly*200;
+      }
+      // Both sticks idle: keep last Input.mouse position — don't snap aim
+    }
+    // Explicit shoot state so mouse.down never gets stuck true
+    Input.mouse.down=this.rActive;
     if(this.rJust){Input.mouseJustPressed=true;this.rJust=false;}
   },
   draw(){
     if(!this.on||typeof Game==='undefined'||Game.state!=='playing')return;
-    const {R,r,E}=this;
-    const bx=R+E,by=canvas.height-R-E;
-    const rbx=canvas.width-R-E;
+    const {R,r,E,btnR}=this;
+    const lc=this._lc(),rc=this._rc(),qc=this._qc(),rlc=this._rlc(),fc=this._fc();
     ctx.save();
-    ctx.globalAlpha=0.28;ctx.beginPath();ctx.arc(bx,by,R,0,Math.PI*2);
-    ctx.strokeStyle='#ffffff';ctx.lineWidth=2.5;ctx.stroke();
-    ctx.globalAlpha=this.lId!==-1?0.65:0.32;
-    ctx.beginPath();ctx.arc(bx+this.lx*R,by+this.ly*R,r,0,Math.PI*2);
-    ctx.fillStyle='#ffffff';ctx.fill();
-    ctx.globalAlpha=0.28;ctx.beginPath();ctx.arc(rbx,by,R,0,Math.PI*2);
-    ctx.strokeStyle=this.rActive?'#ff5555':'#ffffff';ctx.lineWidth=2.5;ctx.stroke();
-    ctx.globalAlpha=this.rActive?0.75:0.32;
-    ctx.beginPath();ctx.arc(rbx+this.rx*R,by+this.ry*R,r,0,Math.PI*2);
-    ctx.fillStyle=this.rActive?'#ff5555':'#ffffff';ctx.fill();
-    ctx.globalAlpha=0.38;ctx.fillStyle='#ffffff';ctx.font='11px monospace';ctx.textAlign='center';
-    ctx.fillText('MOVE',bx,by+R+14);ctx.fillText('AIM·FIRE',rbx,by+R+14);
+    // Move stick
+    ctx.globalAlpha=0.28;ctx.strokeStyle='#fff';ctx.lineWidth=2.5;
+    ctx.beginPath();ctx.arc(lc.x,lc.y,R,0,Math.PI*2);ctx.stroke();
+    ctx.globalAlpha=this.lId!==-1?0.65:0.32;ctx.fillStyle='#fff';
+    ctx.beginPath();ctx.arc(lc.x+this.lx*R,lc.y+this.ly*R,r,0,Math.PI*2);ctx.fill();
+    // Fire stick
+    ctx.globalAlpha=0.28;ctx.strokeStyle=this.rActive?'#ff5555':'#fff';ctx.lineWidth=2.5;
+    ctx.beginPath();ctx.arc(rc.x,rc.y,R,0,Math.PI*2);ctx.stroke();
+    ctx.globalAlpha=this.rActive?0.75:0.32;ctx.fillStyle=this.rActive?'#ff5555':'#fff';
+    ctx.beginPath();ctx.arc(rc.x+this.rx*R,rc.y+this.ry*R,r,0,Math.PI*2);ctx.fill();
+    // Stick labels
+    ctx.globalAlpha=0.38;ctx.fillStyle='#fff';ctx.font='11px monospace';ctx.textAlign='center';
+    ctx.fillText('MOVE',lc.x,lc.y+R+14);ctx.fillText('FIRE',rc.x,rc.y+R+14);
+    // Ability buttons
+    const _btn=(p,label,col)=>{
+      ctx.globalAlpha=0.5;ctx.beginPath();ctx.arc(p.x,p.y,btnR,0,Math.PI*2);
+      ctx.strokeStyle=col;ctx.lineWidth=2;ctx.stroke();
+      ctx.globalAlpha=0.15;ctx.fillStyle=col;ctx.fill();
+      ctx.globalAlpha=0.8;ctx.fillStyle=col;ctx.font='bold 13px monospace';ctx.textAlign='center';
+      ctx.fillText(label,p.x,p.y+5);
+    };
+    _btn(qc,'Q','#44aaff');
+    _btn(rlc,'R','#ffaa44');
+    _btn(fc,'F','#dd44ff');
     ctx.restore();
   }
 };
