@@ -545,12 +545,15 @@ const TouchControls={
   _hitFS(tx,ty){const p=this._fsc(),dx=tx-p.x,dy=ty-p.y;return dx*dx+dy*dy<45*45;},
   _hitPS(tx,ty){const p=this._psc(),dx=tx-p.x,dy=ty-p.y;return dx*dx+dy*dy<45*45;},
   _hitFB(tx,ty){const p=this._fbc(),dx=tx-p.x,dy=ty-p.y,hr=this.R*0.7+20;return dx*dx+dy*dy<hr*hr;},
-  // True if current weapon should use the dedicated FIRE button (single-shot, shotgun)
+  // True if current weapon fires once per trigger pull (sniper, semi-auto pistol).
+  // Shotguns (pellets > 1) AND auto weapons fire continuously while joystick is held.
+  // Per user request: shotguns auto-fire too.
   _isSingleShot(){
     if(typeof Game==='undefined'||!Game.player)return false;
     const w=Game.player.careWeapon||Game.player.weapon;
     if(!w)return false;
-    return !w.auto||(w.pellets||1)>1;
+    // Only treat as single-shot if explicitly non-auto AND not a shotgun
+    return w.auto===false&&(w.pellets||1)<=1;
   },
   _showHint:0,
   _toggleFS(){
@@ -695,17 +698,25 @@ const TouchControls={
       // Both sticks idle: keep last Input.mouse position — don't snap aim
     }
     // Shoot logic depends on weapon type:
-    // - Auto weapons: right stick aims AND fires while held (held = continuous fire)
-    // - Single-shot/shotgun: aim with right stick, FIRE ON RELEASE (lift finger to shoot once)
+    // - Auto weapons: right stick aims AND fires while held (mouse.down=true continuously)
+    // - Shotguns (semi-auto with pellets>1): also auto-fire — set mouseJustPressed every frame, shootCD gates the rate
+    // - True single-shot (auto:false, pellets=1, e.g. snipers): aim with stick, FIRE ON RELEASE
     const single=this._isSingleShot();
-    if(!single){
-      Input.mouse.down=this.rActive;
-      if(this.rJust){Input.mouseJustPressed=true;this.rJust=false;}
-    } else {
-      // Single-shot: do NOT fire while held. Trigger one shot when the user lifts.
+    const w=Game.player?(Game.player.careWeapon||Game.player.weapon):null;
+    const isShotgun=!!(w&&(w.pellets||1)>1);
+    if(single){
+      // True single-shot: fire on release
       Input.mouse.down=false;
       if(this.rReleased){Input.mouseJustPressed=true;Input.mouse.down=true;this.rReleased=false;}
       this.rJust=false;
+    } else {
+      Input.mouse.down=this.rActive;
+      if(this.rJust){Input.mouseJustPressed=true;this.rJust=false;}
+      // SHOTGUNS: game's shoot logic checks mouseJustPressed for non-auto guns, so we
+      // force it every frame while the right stick is held. shootCD gates rate of fire.
+      if(this.rActive&&isShotgun&&w&&!w.auto){
+        Input.mouseJustPressed=true;
+      }
     }
   },
   draw(){
@@ -2348,7 +2359,7 @@ const WEAPON_DEFS={
     desc:'Slows 50% for 3s · pierces 1',pickAmmo:80,silly:'icegun',rarity:'common'},
 };
 const WEAPON_ORDER_OVERRIDE=['r301','flatline','r99','sentinel','peacekeeper','katana','banana'];
-const WEAPON_ORDER=['r301','flatline','r99','sentinel','peacekeeper','katana','banana','slipper','plunger','dicegun','portalgun','vacuum','disco','keyboard','blackholegun','timegun','spaceoddity','lucille','lavagun','icegun']
+const WEAPON_ORDER=['r301','flatline','r99','peacekeeper','katana','banana','slipper','plunger','dicegun','portalgun','vacuum','disco','keyboard','blackholegun','timegun','spaceoddity','lucille','lavagun','icegun']
   .sort((a,b)=>RARITY_ORDER[WEAPON_DEFS[a].rarity||'common']-RARITY_ORDER[WEAPON_DEFS[b].rarity||'common']);
 
 // ─── LEVEL 10 ULTIMATES (one per character) ────────────────────
@@ -10390,42 +10401,52 @@ const UI={
     ctx.fillText('← BACK',bbx,bby+5);
     this._codexBackRect={x:bbx-90,y:bby-15,w:180,h:30};
     ctx.textAlign='left';
+    this._drawCustomCursor();
   },
   _codexItems(tab){
+    // Sort key: common(0) → mythic(4); higher rarity = later
+    const _ro={common:0,rare:1,epic:2,legendary:3,mythic:4};
+    const _rk=r=>_ro[(r||'common').toLowerCase()]||0;
+    const _sort=(arr)=>arr.sort((a,b)=>{
+      const ra=_rk(a.sub),rb=_rk(b.sub);
+      if(ra!==rb)return ra-rb;
+      return (a.name||'').localeCompare(b.name||'');
+    });
     if(tab==='characters'){
-      return Object.entries(CHAR_DEFS).map(([id,c])=>({
+      return _sort(Object.entries(CHAR_DEFS).map(([id,c])=>({
         id,name:c.name,icon:'★',color:c.color,sub:(c.rarity||'common').toUpperCase(),
         desc:c.desc,unlocked:Save.isCharUnlocked(id)
-      }));
+      })));
     }
     if(tab==='weapons'){
-      return Object.entries(WEAPON_DEFS).map(([id,w])=>({
-        id,name:w.name,icon:'⚔',color:w.color||'#ffaa44',sub:w.class||'',
+      return _sort(Object.entries(WEAPON_DEFS).map(([id,w])=>({
+        id,name:w.name,icon:'⚔',color:w.color||'#ffaa44',
+        sub:(w.rarity||'common').toUpperCase()+' · '+(w.class||''),
         desc:w.desc||`${w.dmg} dmg · ${w.rof} rof`,
         unlocked:Save.isWeaponUnlocked(id)
-      }));
+      })));
     }
     if(tab==='careWeapons'){
       return Object.entries(CARE_WEAPON_DEFS).map(([id,w])=>({
-        id,name:w.name,icon:'📦',color:w.color||'#ffdd44',sub:w.class||'',
+        id,name:w.name,icon:'📦',color:w.color||'#ffdd44',sub:'MYTHIC · '+(w.class||''),
         desc:`${w.dmg} dmg · single mag`,
         unlocked:!!Save.data.codexFound?.careWeapons?.[id]||!!Save.data.weapons?.includes('katana')
       }));
     }
     if(tab==='pets'){
-      return COMPANION_DEFS.map(p=>({
+      return _sort(COMPANION_DEFS.map(p=>({
         id:p.id,name:p.name,icon:p.icon||'🐾',color:p.color,sub:(p.rarity||'common').toUpperCase(),
         desc:p.effect||p.desc||'',
         unlocked:!!(Save.data.pets&&Save.data.pets.unlocked&&Save.data.pets.unlocked[p.id])
-      }));
+      })));
     }
     if(tab==='abilities'){
-      return UPGRADES.map(u=>({
+      return _sort(UPGRADES.map(u=>({
         id:u.id,name:u.name,icon:u.icon,color:u.color,
         sub:(u.rarity||'common').toUpperCase(),
         desc:u.desc(1),
         unlocked:!!Save.data.codexFound?.abilities?.[u.id]||!!Save.data.codexUnlockAll
-      }));
+      })));
     }
     if(tab==='evolutions'){
       return Object.entries(EVOLUTIONS).map(([id,e])=>({
