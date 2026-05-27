@@ -2615,11 +2615,11 @@ const MiniBoss={
   // pick: HP+300, dmg+100, size+50, spd+30 (all combined for max mini-boss-ness)
   apply(enemy,wave){
     enemy.kind='miniboss';
-    enemy.maxHp=Math.floor((enemy.maxHp||enemy.hp)*4); // +300% = 4×
+    enemy.maxHp=Math.floor((enemy.maxHp||enemy.hp)*5.5); // +450%  (was 4×)
     enemy.hp=enemy.maxHp;
-    enemy.contactDmg=Math.floor((enemy.contactDmg||5)*2); // +100%
-    enemy.r=(enemy.r||16)*1.5; // +50%
-    enemy.speed=(enemy.speed||60)*1.3; // +30%
+    enemy.contactDmg=Math.floor((enemy.contactDmg||5)*2.5); // +150% (was 2×)
+    enemy.r=(enemy.r||16)*1.5;
+    enemy.speed=(enemy.speed||60)*1.4; // +40% (was +30%)
     enemy.xpDrop=(enemy.xpDrop||1)*5;
     enemy._miniBoss=true;
     enemy._spawnT=performance.now()/1000;
@@ -3710,13 +3710,32 @@ const VSEngine={
 };
 // ─── ENEMIES ───────────────────────────────────────────────────
 let _eid=1000;
+// Global wave-difficulty scalar — applied on TOP of each enemy's existing
+// per-wave scaling, so late waves get exponentially nastier without breaking early game.
+// Returns multipliers for {hp, dmg, speed} based on current wave.
+function _waveDifficulty(wave){
+  const w=Math.max(1,wave||1);
+  return {
+    hp: 1 + (w-1)*0.06 + Math.max(0,w-10)*0.04 + Math.max(0,w-20)*0.05,   // +6%/wave, +4% post-10, +5% post-20
+    dmg: 1 + (w-1)*0.05 + Math.max(0,w-10)*0.03 + Math.max(0,w-25)*0.06,  // +5%/wave, +3% post-10, +6% post-25
+    speed: 1 + (w-1)*0.012 + Math.max(0,w-15)*0.01                       // mild speed creep
+  };
+}
 class BaseEnemy{
   constructor(x,y,opts={}){
     this.id=_eid++;this.x=x;this.y=y;
-    this.r=opts.r??12;this.hp=opts.hp??3;this.maxHp=opts.hp??3;
+    this.r=opts.r??12;
+    // Apply global wave difficulty scaling on top of each enemy's base values
+    const _w=(typeof Spawner!=='undefined')?Spawner.wave:1;
+    const _D=_waveDifficulty(_w);
+    const _hp=Math.round((opts.hp??3)*_D.hp);
+    this.hp=_hp;this.maxHp=_hp;
     this.alive=true;this.isEnemy=true;this.kind=opts.kind??'jello';
-    this.speed=opts.speed??70;this.wobble=Math.random()*Math.PI*2;this.wobSpd=opts.wobSpd??3;
-    this.contactCD=Math.random()*0.4;this.contactDmg=opts.contactDmg??1;this.contactInterval=opts.contactInterval??0.7;
+    this.speed=(opts.speed??70)*_D.speed;
+    this.wobble=Math.random()*Math.PI*2;this.wobSpd=opts.wobSpd??3;
+    this.contactCD=Math.random()*0.4;
+    this.contactDmg=Math.round((opts.contactDmg??1)*_D.dmg*10)/10;
+    this.contactInterval=opts.contactInterval??0.7;
     this.flashT=0;this.color=opts.color??'#ff64b4';this.xpDrop=opts.xpDrop??1;
     this.poisonTimer=0;this.poisonTickT=0;this.poisonDmg=0;
     this.slowTimer=0;this.slowFactor=1;this.stunTimer=0;
@@ -4275,7 +4294,7 @@ class GhostPepper extends BaseEnemy{
 class Boss extends BaseEnemy{
   constructor(x,y,wave=10){
     const tier=Math.max(1,Math.floor(wave/10));
-    super(x,y,{kind:'boss',r:48,hp:600+tier*350,speed:50+tier*5,contactDmg:25+tier*5,contactInterval:0.7,color:'#cc0066',xpDrop:25+tier*5,wobSpd:1.2});
+    super(x,y,{kind:'boss',r:48,hp:850+tier*500,speed:55+tier*7,contactDmg:32+tier*7,contactInterval:0.65,color:'#cc0066',xpDrop:25+tier*5,wobSpd:1.2});
     this.tier=tier;this.attackT=3;this.dashT=8;this.projT=5;this.maxHp=this.hp;
   }
   update(dt,player,target){
@@ -7241,7 +7260,7 @@ class Player{
 
 // ─── SPAWNER ──────────────────────────────────────────────────
 const Spawner={
-  wave:1,waveTimer:30,spawnTimer:0,waveActive:true,
+  wave:1,waveTimer:22,spawnTimer:0,waveActive:true,
   get maxEnemies(){
     let mult=(typeof Game!=='undefined'&&Game.numPlayers===2)?2:1;
     // ONLINE: +50% per additional player (1p=1.0, 2p=1.5, 3p=2.0, 4p=2.5)
@@ -7249,14 +7268,16 @@ const Spawner={
       mult=1+0.5*(Game.onlineRoster.length-1);
     }
     const w=this.wave;
-    // +10% additional on top of current values per user request
-    let base=22+(w-1)*7;
-    if(w>=10)base+=(w-10)*4;
-    if(w>=20)base+=(w-20)*6;
-    if(w>=30)base+=(w-30)*10;
-    return Math.min(420,Math.floor(base*mult*1.10));
+    // Steeper difficulty curve: more enemies per wave + bigger jumps past w10/20/30
+    let base=26+(w-1)*10;        // was 22+(w-1)*7
+    if(w>=10)base+=(w-10)*6;     // was *4
+    if(w>=20)base+=(w-20)*9;     // was *6
+    if(w>=30)base+=(w-30)*14;    // was *10
+    if(w>=40)base+=(w-40)*18;    // NEW: brutal endgame
+    return Math.min(650,Math.floor(base*mult*1.15));  // cap was 420, mult was *1.10
   },
-  get spawnInterval(){return Math.max(0.25,1.7-(this.wave-1)*0.13);}, // +30% faster spawn rate
+  // Faster spawns: floor dropped from 0.25 → 0.15, ramps faster
+  get spawnInterval(){return Math.max(0.15,1.6-(this.wave-1)*0.17);},
   _typeWeights(wave){
     // [Jello, Brute, Speeder, Crusher, Splitter, Phantom, Witch, Tomato, Slug, Disco, Pepper]
     if(wave<=1)return[80,0,10,0,0,0,0,10,0,0,0];
@@ -7279,7 +7300,7 @@ const Spawner={
   update(dt,enemies,player){
     this.waveTimer-=dt;
     if(this.waveTimer<=0){
-      this.wave++;this.waveTimer=30+Math.min(20,this.wave);
+      this.wave++;this.waveTimer=Math.max(12,22-Math.floor(this.wave/3));  // shorter breaks as waves progress
       // BOSS WAVE every 10
       // Perfect-wave bonus check: if previous wave had no damage, award 1 bird
       if(Game._lastWaveCounted&&Game._lastWaveCounted<this.wave&&!Game._waveDamageTaken){
@@ -7313,7 +7334,12 @@ const Spawner={
         // Maybe trigger random event between waves (15% chance)
         const ev=RandomEvents.maybeRoll();if(ev)setTimeout(()=>{if(Game.state==='playing')RandomEvents.triggerEvent(ev);},800);
       } else {
-        UI.announce(`WAVE ${this.wave}`,2.5,'#44ffff');
+        // Difficulty tag — gets scarier with wave
+        const _D=_waveDifficulty(this.wave);
+        const _dPct=Math.round((_D.hp*_D.dmg-1)*100);
+        const _tag=this.wave<5?'':this.wave<10?` · +${_dPct}% TOUGHER`:this.wave<20?` · ⚠ +${_dPct}%`:this.wave<30?` · ☠ +${_dPct}%`:` · 💀 +${_dPct}%`;
+        const _col=this.wave<10?'#44ffff':this.wave<20?'#ffaa44':this.wave<30?'#ff6644':'#ff2244';
+        UI.announce(`WAVE ${this.wave}${_tag}`,2.5,_col);
         AudioManager.play('wave_start');
         // Maybe trigger random event
         const ev=RandomEvents.maybeRoll();if(ev)setTimeout(()=>{if(Game.state==='playing')RandomEvents.triggerEvent(ev);},800);
@@ -7363,7 +7389,7 @@ const Spawner={
         ctx.beginPath();ctx.arc(sx,sy,this.r*0.4,0,Math.PI*2);ctx.stroke();ctx.shadowBlur=0;ctx.globalAlpha=1;},
       onExpire(){const e=new this._C(this.x,this.y,this._wave);Elites.maybeApply(e);Game.enemies.push(e);}});
   },
-  reset(){this.wave=1;this.waveTimer=30;this.spawnTimer=0;}
+  reset(){this.wave=1;this.waveTimer=22;this.spawnTimer=0;}
 };
 
 // ─── ARENA DRAW ───────────────────────────────────────────────
