@@ -52,7 +52,7 @@
 const canvas=document.getElementById('gameCanvas');
 const ctx=canvas.getContext('2d');
 // Bump this on every release — shown in main menu so users can confirm they've got the latest
-const GAME_VERSION='v2.6';
+const GAME_VERSION='v2.7';
 // Virtual design resolution — game UI was authored for ~1920x1080.
 // We render at this fixed internal size and CSS-scale the canvas to fit
 // the device viewport, so the layout is identical on phone and desktop.
@@ -692,10 +692,11 @@ const TouchControls={
     // Aim: right stick when active; otherwise aim in movement direction to avoid snapping to (0,0)
     if(typeof Game!=='undefined'&&Game.player){
       const px=Camera.sx(Game.player.x),py=Camera.sy(Game.player.y);
+      // Project crosshair further out (350 was 200) so the cursor visibly tracks the joystick
       if(this.rActive){
-        Input.mouse.x=px+this.rx*200;Input.mouse.y=py+this.ry*200;
+        Input.mouse.x=px+this.rx*350;Input.mouse.y=py+this.ry*350;
       } else if(this.lId!==-1&&(Math.abs(this.lx)>0.1||Math.abs(this.ly)>0.1)){
-        Input.mouse.x=px+this.lx*200;Input.mouse.y=py+this.ly*200;
+        Input.mouse.x=px+this.lx*350;Input.mouse.y=py+this.ly*350;
       }
       // Both sticks idle: keep last Input.mouse position — don't snap aim
     }
@@ -1868,7 +1869,7 @@ const CarePackages={
   // Only MYTHIC care weapons (all entries below are mythic now)
   // 'kraber', 'chicken', and 'fish' removed from spawn pool per user request.
   // Now ALSO includes regular legendary weapons (rolled from WEAPON_DEFS at spawn time).
-  TYPES:['lstar','eva8','mastiff','devotion','bees','dice','blackhole','katana','banana','portalgun','blackholegun','timegun'],
+  TYPES:['lstar','eva8','mastiff','devotion','dice','blackhole','katana','banana','portalgun','blackholegun','timegun'],
   spawn(){
     let x,y,tries=0;
     do{x=300+Math.random()*(ARENA-600);y=300+Math.random()*(ARENA-600);tries++;}
@@ -2329,6 +2330,91 @@ const CHAR_DEFS={
       c.beginPath();c.moveTo(sx-P_R*0.4,sy+P_R*0.1);c.lineTo(sx-P_R*0.5,sy+P_R*0.3);c.stroke();
       c.beginPath();c.moveTo(sx+P_R*0.4,sy+P_R*0.1);c.lineTo(sx+P_R*0.5,sy+P_R*0.3);c.stroke();
     }},
+  // ── ONE PIECE — ZORO ──
+  zoro:{name:'ZORO',rarity:'mythic',color:'#338866',accent:'#ffffff',hp:115,speed:235,
+    desc:'Three-sword swordsman. Slashes in three arcs.',passive:'+10% crit chance · +20% melee dmg',
+    qName:'SANTORYU SLASH',qDesc:'Three-blade cross slash · 80 dmg cone · CD 8s',
+    detail:(c,sx,sy,a,fl)=>{
+      // Green bandana
+      c.fillStyle=fl?'#fff':'#338866';c.shadowColor='#44aa66';c.shadowBlur=fl?0:6;
+      c.fillRect(sx-P_R*0.34,sy-P_R*0.82,P_R*0.68,P_R*0.10);c.shadowBlur=0;
+      // Bandana tails
+      c.fillStyle=fl?'#fff':'#226644';
+      c.fillRect(sx+P_R*0.20,sy-P_R*0.80,P_R*0.06,P_R*0.20);
+      c.fillRect(sx+P_R*0.28,sy-P_R*0.74,P_R*0.04,P_R*0.18);
+      // 3 gold earrings on left ear
+      c.fillStyle=fl?'#fff':'#ffcc44';c.shadowColor='#ffaa00';c.shadowBlur=fl?0:4;
+      c.beginPath();c.arc(sx-P_R*0.32,sy-P_R*0.50,1.6,0,Math.PI*2);c.fill();
+      c.beginPath();c.arc(sx-P_R*0.32,sy-P_R*0.42,1.6,0,Math.PI*2);c.fill();
+      c.beginPath();c.arc(sx-P_R*0.32,sy-P_R*0.34,1.6,0,Math.PI*2);c.fill();c.shadowBlur=0;
+      // Vertical scar through left eye
+      c.fillStyle=fl?'#fff':'#aa3322';
+      c.fillRect(sx-P_R*0.13,sy-P_R*0.66,2,P_R*0.18);
+      // Green haramaki (sash) on belt
+      c.fillStyle=fl?'#fff':'#338866';
+      c.fillRect(sx-P_R*0.42,sy+P_R*0.12,P_R*0.84,P_R*0.08);
+    }},
+  // ── ASSASSIN'S CREED ──
+  assassin:{name:'ASSASSIN',rarity:'mythic',color:'#e0e0e0',accent:'#aa1122',hp:100,speed:245,
+    desc:'Hooded blade dancer. Hidden blade strikes.',passive:'+15% crit dmg · brief stealth after kill',
+    qName:'LEAP OF FAITH',qDesc:'Teleport-dash + 70 dmg slash · CD 8s',
+    detail:(c,sx,sy,a,fl)=>{
+      // White hood — large pointy hood over head
+      c.fillStyle=fl?'#fff':'#e8e8e8';c.shadowColor='#ffffff';c.shadowBlur=fl?0:8;
+      c.beginPath();
+      c.moveTo(sx-P_R*0.42,sy-P_R*0.50);
+      c.lineTo(sx-P_R*0.20,sy-P_R*1.05);
+      c.lineTo(sx+P_R*0.20,sy-P_R*1.05);
+      c.lineTo(sx+P_R*0.42,sy-P_R*0.50);
+      c.lineTo(sx+P_R*0.30,sy-P_R*0.30);
+      c.lineTo(sx-P_R*0.30,sy-P_R*0.30);
+      c.closePath();c.fill();c.shadowBlur=0;
+      // Hood shadow (dark interior)
+      c.fillStyle=fl?'#fff':'rgba(0,0,0,0.6)';
+      c.beginPath();
+      c.moveTo(sx-P_R*0.18,sy-P_R*0.78);
+      c.lineTo(sx+P_R*0.18,sy-P_R*0.78);
+      c.lineTo(sx+P_R*0.22,sy-P_R*0.45);
+      c.lineTo(sx-P_R*0.22,sy-P_R*0.45);
+      c.closePath();c.fill();
+      // Red sash diagonal across chest
+      c.fillStyle=fl?'#fff':'#aa1122';c.shadowColor='#aa1122';c.shadowBlur=fl?0:4;
+      c.save();c.translate(sx,sy-P_R*0.05);c.rotate(-0.3);
+      c.fillRect(-P_R*0.44,-3,P_R*0.88,6);
+      c.restore();c.shadowBlur=0;
+      // Hidden blade gauntlet (wrist piece)
+      c.fillStyle=fl?'#fff':'#8a8a8a';
+      c.fillRect(sx+P_R*0.50,sy-P_R*0.02,P_R*0.14,P_R*0.10);
+    }},
+  // ── NIGHTMARE BEFORE CHRISTMAS — OOGIE BOOGIE ──
+  oogie:{name:'OOGIE BOOGIE',rarity:'mythic',color:'#ddcc66',accent:'#4a3a1a',hp:160,speed:195,
+    desc:'Boogeyman in a burlap sack. Gambles with bugs.',passive:'+30% max HP · 5% chance to dodge attacks',
+    qName:'DICE ROLL',qDesc:'Random effect · heal/dmg/speed/shield · CD 10s',
+    detail:(c,sx,sy,a,fl)=>{
+      // Brown burlap sack stitching (vertical lines on chest)
+      c.strokeStyle=fl?'#fff':'#4a3a1a';c.lineWidth=1;
+      c.beginPath();c.moveTo(sx-P_R*0.30,sy-P_R*0.22);c.lineTo(sx-P_R*0.30,sy+P_R*0.10);
+      c.moveTo(sx-P_R*0.15,sy-P_R*0.22);c.lineTo(sx-P_R*0.15,sy+P_R*0.10);
+      c.moveTo(sx,sy-P_R*0.22);c.lineTo(sx,sy+P_R*0.10);
+      c.moveTo(sx+P_R*0.15,sy-P_R*0.22);c.lineTo(sx+P_R*0.15,sy+P_R*0.10);
+      c.moveTo(sx+P_R*0.30,sy-P_R*0.22);c.lineTo(sx+P_R*0.30,sy+P_R*0.10);
+      c.stroke();
+      // Mouth stitch (zigzag pattern)
+      c.strokeStyle=fl?'#fff':'#4a3a1a';c.lineWidth=2;
+      c.beginPath();
+      let mxp=sx-P_R*0.18,myp=sy-P_R*0.42;
+      c.moveTo(mxp,myp);
+      for(let i=0;i<6;i++){mxp+=P_R*0.06;myp+=(i%2?3:-3);c.lineTo(mxp,myp);}
+      c.stroke();
+      // Hollow black eye sockets
+      c.fillStyle=fl?'#fff':'#000';
+      c.beginPath();c.ellipse(sx-P_R*0.16,sy-P_R*0.58,P_R*0.08,P_R*0.05,0,0,Math.PI*2);c.fill();
+      c.beginPath();c.ellipse(sx+P_R*0.16,sy-P_R*0.58,P_R*0.08,P_R*0.05,0,0,Math.PI*2);c.fill();
+      // Bugs crawling out (small dark dots)
+      c.fillStyle=fl?'#fff':'#332200';
+      c.beginPath();c.arc(sx-P_R*0.36,sy-P_R*0.10,1.5,0,Math.PI*2);c.fill();
+      c.beginPath();c.arc(sx+P_R*0.38,sy+P_R*0.05,1.5,0,Math.PI*2);c.fill();
+    }},
   // ── ATTACK ON TITAN — EREN ──
   eren:{name:'EREN YEAGER',rarity:'legendary',color:'#7a4a22',accent:'#aaccaa',hp:135,speed:210,
     desc:'Founding Titan. Tank build with explosive ult.',passive:'+20% max HP · regen 2 HP/s under 50% HP',
@@ -2358,7 +2444,7 @@ const CHAR_DEFS={
     }},
 };
 const RARITY_ORDER={common:0,rare:1,epic:2,legendary:3,mythic:4};
-const CHAR_ORDER=['octane','bangalore','mirage','pathfinder','caustic','loba','moonknight','wraith','fuse','spiderman','hollowknight','revenant','felix','victor','mrbean','pinkpanther','rickgrimes','ben10','negan','ricksanchez','gojo','fushiguro','choso','luffy','levi','eren']
+const CHAR_ORDER=['octane','bangalore','mirage','pathfinder','caustic','loba','moonknight','wraith','fuse','spiderman','hollowknight','revenant','felix','victor','mrbean','pinkpanther','rickgrimes','ben10','negan','ricksanchez','gojo','fushiguro','choso','luffy','levi','eren','zoro','assassin','oogie']
   .sort((a,b)=>RARITY_ORDER[CHAR_DEFS[a].rarity||'common']-RARITY_ORDER[CHAR_DEFS[b].rarity||'common']);
 
 // ─── WEAPONS ───────────────────────────────────────────────────
@@ -2381,7 +2467,7 @@ const WEAPON_DEFS={
   katana:{name:'KATANA',class:'MELEE',dmg:32,rof:3.6,ammo:9999,maxAmmo:9999,magSize:9999,reloadTime:0,
     spread:0.0,auto:true,color:'#ff44ff',pellets:1,bulletSize:0.5,bulletSpeed:2.5,pierce:99,trail:1.5,
     desc:'Slash · infinite ammo · big arc',pickAmmo:0,melee:true,range:150,rarity:'legendary'},
-  banana:{name:'BANANA SHOOTER',class:'BOOMERANG',dmg:22,rof:3.0,ammo:120,maxAmmo:240,magSize:12,reloadTime:1.3,
+  banana:{name:'BANANA SHOOTER',class:'BOOMERANG',dmg:22,rof:3.0,ammo:240,maxAmmo:480,magSize:24,reloadTime:1.3,
     spread:0.08,auto:true,color:'#ffee44',pellets:1,bulletSize:1.6,bulletSpeed:0.85,pierce:99,trail:0.9,
     desc:'Bananas boomerang back · hits twice',pickAmmo:36,boomerang:true,rarity:'legendary'},
   // ── SILLY PICKABLE WEAPONS ──
@@ -2608,6 +2694,15 @@ const ULT_DEFS={
   levi:{name:'BLADE FRENZY',color:'#ffffff',cd:50,
     desc:'8 lightning-fast slashes around you · 60 dmg each',
     activate(p){UI.announce('⚔ BLADE FRENZY ⚔',3,'#ffffff');for(let i=0;i<8;i++){setTimeout(()=>{if(Game.state!=='playing'||!p.alive)return;const a=Math.PI*2*i/8;const tx=p.x+Math.cos(a)*120,ty=p.y+Math.sin(a)*120;for(const e of Game.enemies){if(!e.alive)continue;const dx=e.x-tx,dy=e.y-ty;if(dx*dx+dy*dy<70*70){e.takeDamage(60);if(e.applyStun)e.applyStun(0.3);Particles.burst(e.x,e.y,8,{color:'#ffffff',speed:160,life:0.4,r:3});}}Effects.add({x:tx,y:ty,life:0.25,maxLife:0.25,_a:a,draw(){const sx=Camera.sx(this.x),sy=Camera.sy(this.y),f=this.life/this.maxLife;ctx.save();ctx.translate(sx,sy);ctx.rotate(this._a);ctx.globalAlpha=f;ctx.strokeStyle='#ffffff';ctx.lineWidth=4;ctx.shadowColor='#ffffff';ctx.shadowBlur=18;ctx.beginPath();ctx.moveTo(-50,0);ctx.lineTo(50,0);ctx.stroke();ctx.restore();ctx.shadowBlur=0;ctx.globalAlpha=1;}});},i*100);}Camera.shake(6,0.4);}},
+  zoro:{name:'THREE THOUSAND WORLDS',color:'#338866',cd:55,
+    desc:'Massive cross-slash arena · 250 dmg in 350px cone',
+    activate(p){UI.announce('⚔ THREE THOUSAND WORLDS ⚔',3.5,'#338866');const ang=p.aimAngle;for(const e of Game.enemies){if(!e.alive)continue;const dx=e.x-p.x,dy=e.y-p.y;const d=Math.sqrt(dx*dx+dy*dy);if(d>350)continue;const ea=Math.atan2(dy,dx);let diff=ea-ang;while(diff>Math.PI)diff-=Math.PI*2;while(diff<-Math.PI)diff+=Math.PI*2;if(Math.abs(diff)<Math.PI/2){e.takeDamage(250);if(e.applyStun)e.applyStun(1.5);Particles.burst(e.x,e.y,12,{color:'#338866',speed:200,life:0.6,r:4});}}Effects.add({x:p.x,y:p.y,owner:p,ang,life:0.6,maxLife:0.6,draw(){const sx=Camera.sx(this.owner.x),sy=Camera.sy(this.owner.y),f=this.life/this.maxLife;ctx.save();ctx.translate(sx,sy);ctx.rotate(this.ang);ctx.globalAlpha=f*0.85;ctx.strokeStyle='#88ff99';ctx.lineWidth=8;ctx.lineCap='round';ctx.shadowColor='#338866';ctx.shadowBlur=22;ctx.beginPath();ctx.arc(0,0,200,-Math.PI/2,Math.PI/2);ctx.stroke();ctx.lineWidth=4;ctx.strokeStyle='#ffffff';ctx.beginPath();ctx.arc(0,0,200,-Math.PI/2,Math.PI/2);ctx.stroke();ctx.restore();ctx.shadowBlur=0;ctx.globalAlpha=1;}});Camera.shake(10,0.5);}},
+  assassin:{name:'ANIMUS STRIKE',color:'#aa1122',cd:50,
+    desc:'10 instant blade strikes on nearest enemies · 80 dmg each',
+    activate(p){UI.announce('🗡 ANIMUS STRIKE 🗡',3,'#aa1122');const targets=Game.enemies.filter(e=>e.alive).sort((a,b)=>((a.x-p.x)**2+(a.y-p.y)**2)-((b.x-p.x)**2+(b.y-p.y)**2)).slice(0,10);targets.forEach((e,i)=>{setTimeout(()=>{if(!e.alive)return;e.takeDamage(80);Particles.burst(e.x,e.y,10,{color:'#aa1122',speed:160,life:0.4,r:3});Effects.add({sx:p.x,sy:p.y,ex:e.x,ey:e.y,life:0.2,maxLife:0.2,draw(){const ax=Camera.sx(this.sx),ay=Camera.sy(this.sy),bx=Camera.sx(this.ex),by=Camera.sy(this.ey),f=this.life/this.maxLife;ctx.save();ctx.globalAlpha=f*0.9;ctx.strokeStyle='#ffffff';ctx.lineWidth=2;ctx.shadowColor='#aa1122';ctx.shadowBlur=14;ctx.beginPath();ctx.moveTo(ax,ay);ctx.lineTo(bx,by);ctx.stroke();ctx.restore();ctx.shadowBlur=0;ctx.globalAlpha=1;}});},i*80);});Camera.shake(6,0.4);}},
+  oogie:{name:'JACKPOT',color:'#ffaa44',cd:60,
+    desc:'Roll the dice 6× · each is a random calamity',
+    activate(p){UI.announce('🎲 JACKPOT 🎲',3,'#ffaa44');for(let i=0;i<6;i++){setTimeout(()=>{if(Game.state!=='playing'||!p.alive)return;const roll=Math.floor(Math.random()*6);if(roll===0){p.hp=Math.min(p.maxHp,p.hp+30);Particles.burst(p.x,p.y,16,{color:'#44ff44',speed:120,life:0.5,r:4});}else if(roll===1){for(const e of Game.enemies){if(!e.alive)continue;const dx=e.x-p.x,dy=e.y-p.y;if(dx*dx+dy*dy<200*200)e.takeDamage(80);}}else if(roll===2){p.shieldT=Math.max(p.shieldT||0,3);}else if(roll===3){for(const e of Game.enemies){if(!e.alive)continue;if(e.applyStun)e.applyStun(2);}}else if(roll===4){const a=Math.random()*Math.PI*2;for(let j=0;j<10;j++){const aa=a+j*Math.PI/5;Bullets.fire(p.x,p.y,aa,p.id,'#ffaa44',60,{pierce:99,weaponSize:1.6,weaponSpeed:1.0,trail:0.7});}}else{Save.addKiwis(20);UI.announce('+20 🥝',1.2,'#88ff44');}Particles.burst(p.x,p.y,8,{color:'#ffaa44',speed:140,life:0.4,r:3});},i*250);}Camera.shake(6,0.4);}},
   eren:{name:'FOUNDING TITAN ROAR',color:'#aaccaa',cd:65,
     desc:'Massive AoE roar · 200 dmg · stuns all enemies r 400',
     activate(p){UI.announce('🦣 FOUNDING TITAN ROAR 🦣',4,'#aaccaa');const R=400;for(const e of Game.enemies){if(!e.alive)continue;const dx=e.x-p.x,dy=e.y-p.y;if(dx*dx+dy*dy<R*R){e.takeDamage(200);if(e.applyStun)e.applyStun(3);}}Particles.burst(p.x,p.y,60,{color:'#88aa88',speed:300,life:1.2,r:8});Particles.burst(p.x,p.y,32,{color:'#ffffff',speed:200,life:0.6,r:5});Effects.add({x:p.x,y:p.y,owner:p,r:R,life:1,maxLife:1,draw(){const sx=Camera.sx(this.owner.x),sy=Camera.sy(this.owner.y),f=1-this.life/this.maxLife;ctx.save();ctx.globalCompositeOperation='lighter';ctx.globalAlpha=(1-f)*0.7;const rg=ctx.createRadialGradient(sx,sy,30,sx,sy,this.r*f);rg.addColorStop(0,'rgba(170,204,170,0.9)');rg.addColorStop(0.5,'rgba(140,180,140,0.5)');rg.addColorStop(1,'rgba(60,90,60,0)');ctx.fillStyle=rg;ctx.beginPath();ctx.arc(sx,sy,this.r*f,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#aaccaa';ctx.lineWidth=6;ctx.shadowColor='#aaccaa';ctx.shadowBlur=25;ctx.beginPath();ctx.arc(sx,sy,this.r*f,0,Math.PI*2);ctx.stroke();ctx.restore();ctx.shadowBlur=0;ctx.globalAlpha=1;}});Camera.shake(14,0.8);}},
@@ -2862,7 +2957,7 @@ const MiniBoss={
     enemy.hp=enemy.maxHp;
     enemy.contactDmg=Math.floor((enemy.contactDmg||5)*2.5); // +150% (was 2×)
     enemy.r=(enemy.r||16)*1.5;
-    enemy.speed=(enemy.speed||60)*1.4; // +40% (was +30%)
+    enemy.speed=(enemy.speed||60)*1.15; // miniboss too fast — reduced from 1.4× to 1.15×
     enemy.xpDrop=(enemy.xpDrop||1)*5;
     enemy._miniBoss=true;
     enemy._spawnT=performance.now()/1000;
@@ -3040,12 +3135,21 @@ const Companions={
       const orbitWeight=(c.id==='goat'&&c.chargeState)?0:1;
       c.x+=(tx-c.x)*dt*4*orbitWeight;c.y+=(ty-c.y)*dt*4*orbitWeight;
       c.dmgT-=dt;c.attackT-=dt;if(c._shieldT>0)c._shieldT-=dt;
-      // GOAT: charges in a line, damages enemies, comes back. Re-triggers every 10s.
+      // GOAT: charges in a straight line, damages enemies along the way, returns to player.
+      // Re-triggers every 8s. Charge auto-aborts after 2.5s to prevent stuck states.
       if(c.id==='goat'){
         if(c.chargeState){
-          const speed=900;
-          c.x+=c.chargeDir.x*speed*dt;c.y+=c.chargeDir.y*speed*dt;
-          // Damage enemies in path — each enemy can only be hit once per charge
+          c._chargeT=(c._chargeT||0)+dt;
+          const speed=620;
+          // Outbound: charge in fixed direction. Return: head straight to current player position.
+          let dirX=c.chargeDir.x,dirY=c.chargeDir.y;
+          if(c.chargeState==='back'){
+            const tx=player.x-c.x,ty=player.y-c.y;
+            const td=Math.sqrt(tx*tx+ty*ty)||1;
+            dirX=tx/td;dirY=ty/td;
+          }
+          c.x+=dirX*speed*dt;c.y+=dirY*speed*dt;
+          // Damage enemies in path — each enemy hit once per charge phase
           if(!c._goatHits)c._goatHits=new Set();
           for(const e of Game.enemies){
             if(!e.alive||c._goatHits.has(e.id))continue;
@@ -3057,39 +3161,37 @@ const Companions={
               Particles.burst(e.x,e.y,8,{color:'#ffeb44',speed:160,life:0.4,r:3});
             }
           }
-          // Check end conditions for outbound vs return
+          // Phase transitions
           const sx=c.x-c.chargeStartX,sy=c.y-c.chargeStartY;
           const dist=Math.sqrt(sx*sx+sy*sy);
           if(c.chargeState==='out'){
-            if(dist>c.chargeMaxDist||!polyContains(c.x,c.y)||collideObstacle(c.x,c.y,16)){
-              c.chargeState='back';c.chargeDir={x:-c.chargeDir.x,y:-c.chargeDir.y};
-              c._goatHits.clear(); // can re-hit on return
+            if(dist>c.chargeMaxDist||!polyContains(c.x,c.y)||collideObstacle(c.x,c.y,16)||c._chargeT>1.2){
+              c.chargeState='back';c._goatHits.clear();
               Particles.burst(c.x,c.y,16,{color:'#dddddd',speed:140,life:0.5,r:4});
             }
           } else {
-            // Returning — stop when close to player
             const px=player.x-c.x,py=player.y-c.y;
-            if(px*px+py*py<60*60){
-              c.chargeState=null;c._goatHits.clear();
+            // End when close to player OR phase has gone too long (safety)
+            if(px*px+py*py<80*80||c._chargeT>3.0){
+              c.chargeState=null;c._chargeT=0;c._goatHits.clear();
               Particles.burst(c.x,c.y,10,{color:'#ffffff',speed:90,life:0.4,r:3});
             }
           }
         } else if(c.attackT<=0){
-          // Begin a new charge — aim toward densest cluster of enemies (or random if none)
-          c.attackT=10;
+          c.attackT=8;
           let ang=Math.random()*Math.PI*2;
           if(Game.enemies&&Game.enemies.length){
             let sumX=0,sumY=0,n=0;
-            for(const e of Game.enemies){if(!e.alive)continue;const dx=e.x-c.x,dy=e.y-c.y;if(dx*dx+dy*dy<500*500){sumX+=dx;sumY+=dy;n++;}}
+            for(const e of Game.enemies){if(!e.alive)continue;const dx=e.x-c.x,dy=e.y-c.y;if(dx*dx+dy*dy<400*400){sumX+=dx;sumY+=dy;n++;}}
             if(n>0&&(sumX!==0||sumY!==0))ang=Math.atan2(sumY,sumX);
           }
-          c.chargeState='out';
+          c.chargeState='out';c._chargeT=0;
           c.chargeDir={x:Math.cos(ang),y:Math.sin(ang)};
           c.chargeStartX=c.x;c.chargeStartY=c.y;
-          c.chargeMaxDist=600;
+          c.chargeMaxDist=380;
           c._goatHits=new Set();
           Particles.burst(c.x,c.y,14,{color:'#ffeb44',speed:160,life:0.5,r:4});
-          AudioManager.play('kill'); // closest sfx we have
+          AudioManager.play('kill');
         }
       }
       // Dog: bite nearest enemy (BIGGER bite now)
@@ -4491,7 +4593,7 @@ const VSEngine={
         }
       }
       // Draw drone
-      Effects.add({_t:0,life:0.001,maxLife:0.001,draw(){
+      Effects.add({_t:0,life:0.05,maxLife:0.05,draw(){
         const sx=Camera.sx(S.droneX),sy=Camera.sy(S.droneY);
         ctx.save();ctx.shadowColor='#88ccff';ctx.shadowBlur=10;
         ctx.fillStyle='#2a4466';ctx.beginPath();ctx.arc(sx,sy,7,0,Math.PI*2);ctx.fill();
@@ -4574,7 +4676,7 @@ const VSEngine={
           for(const e of Game.enemies){if(!e.alive)continue;const ex=e.x-dx,ey=e.y-dy;if(ex*ex+ey*ey<(e.r+10)**2)e.takeDamage(dmg,p.id);}
         }
       }
-      Effects.add({_t:0,life:0.001,maxLife:0.001,draw(){
+      Effects.add({_t:0,life:0.05,maxLife:0.05,draw(){
         for(let i=0;i<n;i++){
           const a=S.defAng+i/n*Math.PI*2;
           const dx=Camera.sx(p.x+Math.cos(a)*r),dy=Camera.sy(p.y+Math.sin(a)*r);
@@ -4632,7 +4734,7 @@ const VSEngine={
         T.poison=0.5;
         for(const e of Game.enemies){if(!e.alive)continue;const dx=e.x-p.x,dy=e.y-p.y;if(dx*dx+dy*dy<r*r){e.takeDamage(dmg,p.id);if(e.applySlow)e.applySlow(0.7,1.0);}}
       }
-      Effects.add({_t:0,life:0.001,maxLife:0.001,draw(){
+      Effects.add({_t:0,life:0.05,maxLife:0.05,draw(){
         const sx=Camera.sx(p.x),sy=Camera.sy(p.y),t=performance.now()/700;
         ctx.save();ctx.globalCompositeOperation='lighter';
         ctx.globalAlpha=0.22+Math.sin(t)*0.05;
@@ -4770,7 +4872,7 @@ const VSEngine={
           for(const e of Game.enemies){if(!e.alive)continue;const dx=e.x-bx,dy=e.y-by;if(dx*dx+dy*dy<(e.r+14)**2)e.takeDamage(dmg,p.id);}
         }
       }
-      Effects.add({_t:0,life:0.001,maxLife:0.001,draw(){
+      Effects.add({_t:0,life:0.05,maxLife:0.05,draw(){
         for(let i=0;i<n;i++){
           const a=S.bladeAng+i/n*Math.PI*2;
           const sx=Camera.sx(p.x+Math.cos(a)*r),sy=Camera.sy(p.y+Math.sin(a)*r);
@@ -4920,7 +5022,7 @@ const VSEngine={
           }});
       } else {
         // Charge indicator: small ring on player that fills
-        Effects.add({_t:0,life:0.001,maxLife:0.001,owner:p,draw(){
+        Effects.add({_t:0,life:0.05,maxLife:0.05,owner:p,draw(){
           const sx=Camera.sx(this.owner.x),sy=Camera.sy(this.owner.y);
           const pct=T.doom/charge;
           ctx.save();ctx.strokeStyle='#ff00ff';ctx.lineWidth=2;ctx.shadowColor='#ff00ff';ctx.shadowBlur=6;
@@ -4952,7 +5054,7 @@ const VSEngine={
         }
         return true;
       });
-      Effects.add({_t:0,life:0.001,maxLife:0.001,draw(){for(const b of S.balls){const sx=Camera.sx(b.x),sy=Camera.sy(b.y);ctx.save();ctx.fillStyle='#ffffff';ctx.shadowColor='#ffffff';ctx.shadowBlur=12;ctx.beginPath();ctx.arc(sx,sy,8,0,Math.PI*2);ctx.fill();ctx.fillStyle='#000000';ctx.beginPath();ctx.arc(sx-2,sy-2,2,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.arc(sx+3,sy+1,1.5,0,Math.PI*2);ctx.fill();ctx.restore();ctx.shadowBlur=0;}}});
+      Effects.add({_t:0,life:0.05,maxLife:0.05,draw(){for(const b of S.balls){const sx=Camera.sx(b.x),sy=Camera.sy(b.y);ctx.save();ctx.fillStyle='#ffffff';ctx.shadowColor='#ffffff';ctx.shadowBlur=12;ctx.beginPath();ctx.arc(sx,sy,8,0,Math.PI*2);ctx.fill();ctx.fillStyle='#000000';ctx.beginPath();ctx.arc(sx-2,sy-2,2,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.arc(sx+3,sy+1,1.5,0,Math.PI*2);ctx.fill();ctx.restore();ctx.shadowBlur=0;}}});
     }
 
     // RPG LAUNCHER — homing rocket with big AoE
@@ -5095,7 +5197,7 @@ const VSEngine={
           for(const e of Game.enemies){if(!e.alive)continue;const dx=e.x-bx,dy=e.y-by;if(dx*dx+dy*dy<(e.r+12)**2)e.takeDamage(dmg,p.id);}
         }
       }
-      Effects.add({_t:0,life:0.001,maxLife:0.001,draw(){
+      Effects.add({_t:0,life:0.05,maxLife:0.05,draw(){
         for(let i=0;i<n;i++){const a=S.soulAng+i/n*Math.PI*2;const sx=Camera.sx(p.x+Math.cos(a)*r),sy=Camera.sy(p.y+Math.sin(a)*r);
           ctx.save();ctx.shadowColor='#aa88ff';ctx.shadowBlur=14;ctx.fillStyle='#aa88ff';ctx.beginPath();ctx.arc(sx,sy,7,0,Math.PI*2);ctx.fill();ctx.fillStyle='#ddccff';ctx.beginPath();ctx.arc(sx,sy,3,0,Math.PI*2);ctx.fill();ctx.restore();ctx.shadowBlur=0;}
       }});
@@ -5124,7 +5226,7 @@ const VSEngine={
         const ang=S.rayAng;
         for(const e of Game.enemies){if(!e.alive)continue;const dx=e.x-p.x,dy=e.y-p.y;const along=dx*Math.cos(ang)+dy*Math.sin(ang);const perp=Math.abs(dx*-Math.sin(ang)+dy*Math.cos(ang));if(along>0&&along<700&&perp<35)e.takeDamage(dmg,p.id);}
       }
-      Effects.add({_t:0,life:0.001,maxLife:0.001,owner:p,draw(){
+      Effects.add({_t:0,life:0.05,maxLife:0.05,owner:p,draw(){
         const sx=Camera.sx(this.owner.x),sy=Camera.sy(this.owner.y);
         ctx.save();ctx.translate(sx,sy);ctx.rotate(S.rayAng);ctx.globalAlpha=0.7;
         ctx.strokeStyle='#ff00ff';ctx.lineWidth=8;ctx.shadowColor='#ff44ff';ctx.shadowBlur=24;
@@ -5175,7 +5277,7 @@ const VSEngine={
         T.rune=0.5;
         for(const e of Game.enemies){if(!e.alive)continue;const dx=e.x-p.x,dy=e.y-p.y;if(dx*dx+dy*dy<r*r){e.takeDamage(dmg,p.id);if(e.applySlow)e.applySlow(0.55,0.7);}}
       }
-      Effects.add({_t:0,life:0.001,maxLife:0.001,owner:p,draw(){
+      Effects.add({_t:0,life:0.05,maxLife:0.05,owner:p,draw(){
         const sx=Camera.sx(this.owner.x),sy=Camera.sy(this.owner.y),t=performance.now()/400;
         ctx.save();ctx.globalAlpha=0.32;ctx.strokeStyle='#aa44ff';ctx.lineWidth=2;ctx.shadowColor='#aa44ff';ctx.shadowBlur=10;
         ctx.beginPath();ctx.arc(sx,sy,r,0,Math.PI*2);ctx.stroke();
@@ -5288,7 +5390,7 @@ const VSEngine={
         T.arc=0.3;
         for(const e of Game.enemies){if(!e.alive)continue;const dx=e.x-p.x,dy=e.y-p.y;if(dx*dx+dy*dy<r*r)e.takeDamage(dmg,p.id);}
       }
-      Effects.add({_t:0,life:0.001,maxLife:0.001,owner:p,draw(){
+      Effects.add({_t:0,life:0.05,maxLife:0.05,owner:p,draw(){
         const sx=Camera.sx(this.owner.x),sy=Camera.sy(this.owner.y),t=performance.now()/150;
         ctx.save();ctx.globalCompositeOperation='lighter';ctx.globalAlpha=0.45+Math.sin(t*4)*0.15;
         ctx.strokeStyle='#44ffff';ctx.lineWidth=3;ctx.shadowColor='#44ffff';ctx.shadowBlur=20;
@@ -5308,11 +5410,11 @@ let _eid=1000;
 // Returns multipliers for {hp, dmg, speed} based on current wave.
 function _waveDifficulty(wave){
   const w=Math.max(1,wave||1);
+  // Scaling reduced by 5% per user request (was 0.14/0.10, now 0.13/0.095)
   return {
-    // Even more brutal scaling — enemies get tanky and hit hard fast
-    hp:    1 + (w-1)*0.14 + Math.max(0,w-10)*0.10 + Math.max(0,w-20)*0.12 + Math.max(0,w-30)*0.16,
-    dmg:   1 + (w-1)*0.10 + Math.max(0,w-10)*0.08 + Math.max(0,w-25)*0.12,
-    speed: 1 + (w-1)*0.024 + Math.max(0,w-15)*0.020
+    hp:    1 + (w-1)*0.13 + Math.max(0,w-10)*0.095 + Math.max(0,w-20)*0.11 + Math.max(0,w-30)*0.15,
+    dmg:   1 + (w-1)*0.095 + Math.max(0,w-10)*0.075 + Math.max(0,w-25)*0.11,
+    speed: 1 + (w-1)*0.022 + Math.max(0,w-15)*0.018
   };
 }
 class BaseEnemy{
@@ -6281,6 +6383,72 @@ class Duplicator extends BaseEnemy{
     ctx.fillStyle=fl?'#fff':'#88ffee';
     ctx.beginPath();ctx.arc(sx-this.r*0.30,sy-this.r*0.20,0.8,0,Math.PI*2);ctx.fill();
     ctx.beginPath();ctx.arc(sx+this.r*0.34,sy-this.r*0.20,0.8,0,Math.PI*2);ctx.fill();
+  }
+}
+
+// ─── KAMIKAZE BOMBER — instakills you if you kill it within 200px ───
+class Kamikaze extends BaseEnemy{
+  constructor(x,y,wave=1){super(x,y,{kind:'kamikaze',r:18,hp:35+Math.floor(wave*2),speed:55+wave*2,contactDmg:5,contactInterval:0.5,color:'#222222',xpDrop:8,wobSpd:2.5});}
+  _die(){
+    // Massive blast — INSTAKILL within 200px
+    const R=200;
+    Particles.burst(this.x,this.y,50,{color:'#ff0000',speed:340,life:1.0,r:8});
+    Particles.burst(this.x,this.y,30,{color:'#ffaa00',speed:240,life:0.8,r:6});
+    Particles.burst(this.x,this.y,18,{color:'#ffffff',speed:160,life:0.5,r:4});
+    Camera.shake(12,0.7);AudioManager.play('explosion');
+    // Hit ALL players in range — set HP to 0
+    if(Game.player&&Game.player.alive){const dx=Game.player.x-this.x,dy=Game.player.y-this.y;if(dx*dx+dy*dy<R*R){Game.player.takeDamage(9999,this.id);}}
+    if(Game.player2&&Game.player2.alive){const dx=Game.player2.x-this.x,dy=Game.player2.y-this.y;if(dx*dx+dy*dy<R*R){Game.player2.takeDamage(9999,this.id);}}
+    // Chain damage other enemies massively
+    for(const e of Game.enemies){if(!e.alive||e===this)continue;const dx=e.x-this.x,dy=e.y-this.y;if(dx*dx+dy*dy<R*R)e.takeDamage(200);}
+    // Big blast effect
+    Effects.add({x:this.x,y:this.y,r:R,life:0.7,maxLife:0.7,
+      draw(){const sx=Camera.sx(this.x),sy=Camera.sy(this.y),f=1-this.life/this.maxLife;
+        ctx.save();ctx.globalCompositeOperation='lighter';ctx.globalAlpha=(1-f)*0.9;
+        const rg=ctx.createRadialGradient(sx,sy,12,sx,sy,this.r*f);
+        rg.addColorStop(0,'#ffffff');rg.addColorStop(0.4,'#ff4422');rg.addColorStop(0.8,'#ff0000');rg.addColorStop(1,'rgba(120,0,0,0)');
+        ctx.fillStyle=rg;ctx.beginPath();ctx.arc(sx,sy,this.r*f,0,Math.PI*2);ctx.fill();
+        ctx.strokeStyle='#ff0000';ctx.lineWidth=7;ctx.shadowColor='#ff0000';ctx.shadowBlur=28;
+        ctx.beginPath();ctx.arc(sx,sy,this.r*f,0,Math.PI*2);ctx.stroke();
+        ctx.restore();ctx.shadowBlur=0;ctx.globalAlpha=1;}});
+    super._die();
+  }
+  _drawBody(sx,sy){
+    const fl=this.flashT>0,t=performance.now()/100;
+    const pulse=0.5+0.5*Math.sin(t*2);
+    // VERY visible WARNING glow — black body with intense red pulse
+    ctx.fillStyle='rgba(0,0,0,0.5)';ctx.beginPath();ctx.ellipse(sx+2,sy+this.r*0.8,this.r*0.9,this.r*0.28,0,0,Math.PI*2);ctx.fill();
+    // Pulsing red warning ring (this is the visual cue not to kill it close!)
+    ctx.globalAlpha=0.4+pulse*0.5;
+    ctx.strokeStyle='#ff0000';ctx.lineWidth=3;ctx.shadowColor='#ff0000';ctx.shadowBlur=20+pulse*15;
+    ctx.beginPath();ctx.arc(sx,sy,this.r+8+pulse*5,0,Math.PI*2);ctx.stroke();
+    // Wider outer warning ring (200px = the blast radius)
+    ctx.globalAlpha=0.10+pulse*0.10;ctx.lineWidth=2;
+    ctx.beginPath();ctx.arc(sx,sy,200,0,Math.PI*2);ctx.stroke();
+    ctx.shadowBlur=0;ctx.globalAlpha=1;
+    // Body — black orb with red ticking light
+    ctx.fillStyle=fl?'#ffffff':this.color;ctx.shadowColor='#aa0000';ctx.shadowBlur=fl?0:8;
+    ctx.beginPath();ctx.arc(sx,sy,this.r,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0;
+    // Pulsing red core
+    ctx.fillStyle=fl?'#fff':`rgb(255,${Math.floor(20+pulse*60)},${Math.floor(20+pulse*40)})`;
+    ctx.beginPath();ctx.arc(sx,sy,this.r*0.5*(0.6+pulse*0.5),0,Math.PI*2);ctx.fill();
+    // Fuse on top (spark)
+    ctx.strokeStyle='#888';ctx.lineWidth=2;
+    ctx.beginPath();ctx.moveTo(sx,sy-this.r);ctx.lineTo(sx+Math.sin(t*4)*4,sy-this.r-6);ctx.stroke();
+    // Spark at fuse tip
+    ctx.fillStyle='#ffeb00';ctx.shadowColor='#ffeb00';ctx.shadowBlur=8;
+    ctx.beginPath();ctx.arc(sx+Math.sin(t*4)*4,sy-this.r-6,2.5+pulse*1.5,0,Math.PI*2);ctx.fill();
+    ctx.shadowBlur=0;
+    // Skull warning on body
+    ctx.fillStyle='#ffeb00';ctx.font='bold 10px monospace';ctx.textAlign='center';
+    ctx.fillText('☠',sx,sy+3);
+    // "!" warning above enemy if player is too close
+    if(Game.player){const dx=Game.player.x-this.x,dy=Game.player.y-this.y;if(dx*dx+dy*dy<240*240){
+      ctx.fillStyle='#ff0000';ctx.font='bold 16px monospace';
+      ctx.shadowColor='#ff0000';ctx.shadowBlur=12;
+      ctx.fillText('!',sx,sy-this.r-14);
+      ctx.shadowBlur=0;
+    }}
   }
 }
 
@@ -7832,7 +8000,7 @@ class Player{
     if(this.xp>=need){this.xp-=need;this.level++;Game.triggerLevelUp();}
   }
   // Aggressive progression: L2=5, L3=7, L4=10, L5=15, L6=22, L7=30, L8=39, L10=63 …
-  xpForNextLevel(){const L=this.level-1;return Math.floor((5+L*1.5+L*L*0.7)*1.5);}
+  xpForNextLevel(){const L=this.level-1;return Math.floor((5+L*1.5+L*L*0.7)*1.8);}
   takeDamage(amount,attackerId){
     if(!this.alive)return;
     if(this.qActive&&(this.charId==='revenant'||this.charId==='wraith'))return;
@@ -8824,6 +8992,63 @@ class Player{
         Particles.burst(this.x,this.y,18,{color:'#ffffff',speed:160,life:0.4,r:3});
         Camera.shake(3,0.2);AudioManager.play('kill');
         break;}
+      case 'zoro':{
+        this.qCD=8*cdMult;
+        // SANTORYU — three sword arcs forward
+        const ang=this.aimAngle;
+        for(const e of Game.enemies){
+          if(!e.alive)continue;
+          const dx=e.x-this.x,dy=e.y-this.y,d=Math.sqrt(dx*dx+dy*dy);
+          if(d>200)continue;
+          const ea=Math.atan2(dy,dx);
+          let diff=ea-ang;while(diff>Math.PI)diff-=Math.PI*2;while(diff<-Math.PI)diff+=Math.PI*2;
+          if(Math.abs(diff)<Math.PI/2.5){e.takeDamage(80);Particles.burst(e.x,e.y,8,{color:'#338866',speed:140,life:0.4,r:3});}
+        }
+        // 3 slash visuals
+        for(let i=0;i<3;i++){
+          Effects.add({x:this.x,y:this.y,ang:ang+(i-1)*0.4,life:0.3-i*0.05,maxLife:0.3-i*0.05,owner:this,
+            draw(){const sx=Camera.sx(this.owner.x),sy=Camera.sy(this.owner.y),f=this.life/this.maxLife;
+              ctx.save();ctx.translate(sx,sy);ctx.rotate(this.ang);
+              ctx.globalAlpha=f;ctx.strokeStyle='#88ff99';ctx.lineWidth=4;ctx.lineCap='round';
+              ctx.shadowColor='#338866';ctx.shadowBlur=18;
+              ctx.beginPath();ctx.arc(0,0,180,-Math.PI/3,Math.PI/3);ctx.stroke();
+              ctx.restore();ctx.shadowBlur=0;ctx.globalAlpha=1;}});
+        }
+        Particles.burst(this.x,this.y,20,{color:'#338866',speed:180,life:0.5,r:4});
+        Camera.shake(4,0.25);AudioManager.play('kill');
+        break;}
+      case 'assassin':{
+        this.qCD=8*cdMult;
+        // LEAP OF FAITH — teleport in aim direction + slash on landing
+        const ang=this.aimAngle,dist=220;
+        const tx=this.x+Math.cos(ang)*dist,ty=this.y+Math.sin(ang)*dist;
+        const c=clampPoly(tx,ty,PHYS_R);
+        // Start-point particles
+        Particles.burst(this.x,this.y,12,{color:'#ffffff',speed:120,life:0.4,r:3});
+        this.x=c.x;this.y=c.y;
+        // Slash on landing
+        for(const e of Game.enemies){if(!e.alive)continue;const dx=e.x-this.x,dy=e.y-this.y;if(dx*dx+dy*dy<140*140){e.takeDamage(70);Particles.burst(e.x,e.y,8,{color:'#aa1122',speed:140,life:0.4,r:3});}}
+        this.ultInvT=Math.max(this.ultInvT||0,0.4);
+        Effects.add({x:this.x,y:this.y,life:0.4,maxLife:0.4,owner:this,
+          draw(){const sx=Camera.sx(this.owner.x),sy=Camera.sy(this.owner.y),f=this.life/this.maxLife;
+            ctx.save();ctx.globalCompositeOperation='lighter';
+            ctx.globalAlpha=(1-f)*0.8;ctx.strokeStyle='#aa1122';ctx.lineWidth=4;ctx.shadowColor='#ff3344';ctx.shadowBlur=18;
+            ctx.beginPath();ctx.arc(sx,sy,140*(1-f*0.3),0,Math.PI*2);ctx.stroke();
+            ctx.restore();ctx.shadowBlur=0;ctx.globalAlpha=1;}});
+        Particles.burst(this.x,this.y,20,{color:'#aa1122',speed:200,life:0.5,r:4});
+        Camera.shake(3,0.2);AudioManager.play('kill');
+        break;}
+      case 'oogie':{
+        this.qCD=10*cdMult;
+        // DICE ROLL — one random effect from a small pool
+        const roll=Math.floor(Math.random()*5);
+        if(roll===0){this.hp=Math.min(this.maxHp,this.hp+25);UI.announce('🎲 HEAL +25',1.5,'#44ff44');Particles.burst(this.x,this.y,16,{color:'#44ff44',speed:100,life:0.5,r:4});}
+        else if(roll===1){for(const e of Game.enemies){if(!e.alive)continue;const dx=e.x-this.x,dy=e.y-this.y;if(dx*dx+dy*dy<200*200)e.takeDamage(60);}UI.announce('🎲 DAMAGE 60',1.5,'#ff4422');Particles.burst(this.x,this.y,28,{color:'#ff4422',speed:200,life:0.6,r:4});}
+        else if(roll===2){this.shieldT=Math.max(this.shieldT||0,2.5);UI.announce('🎲 SHIELD',1.5,'#44aaff');Particles.burst(this.x,this.y,16,{color:'#44aaff',speed:120,life:0.5,r:3});}
+        else if(roll===3){this.speedMult=(this.speedMult||1)*1.5;setTimeout(()=>{if(this&&this.alive)this.speedMult=(this.speedMult||1.5)/1.5;},4000);UI.announce('🎲 SPEED 4s',1.5,'#ffee44');Particles.burst(this.x,this.y,16,{color:'#ffee44',speed:140,life:0.4,r:3});}
+        else {Save.addKiwis(15);UI.announce('🎲 +15 🥝',1.5,'#88ff44');Particles.burst(this.x,this.y,16,{color:'#88ff44',speed:120,life:0.4,r:3});}
+        Camera.shake(3,0.2);AudioManager.play('ult_ready');
+        break;}
       case 'eren':{
         this.qCD=11*cdMult;
         // TITAN SHIFT — 4s buff: +40% damage, +25% resist, brief invuln on activation
@@ -9465,22 +9690,22 @@ const Spawner={
   // Faster spawns: floor dropped from 0.25 → 0.15, ramps faster
   get spawnInterval(){return Math.max(0.15,1.6-(this.wave-1)*0.17);},
   _typeWeights(wave){
-    // [Jello, Brute, Speeder, Crusher, Splitter, Phantom, Witch, Tomato, Slug, Disco, Pepper, Exploder, Summoner, Shielder, Charger, AcidGlob, Shrieker, Vampire, Duplicator]
-    if(wave<=1)return[80,0,10,0,0,0,0,10,0,0,0,0,0,0,0,0,0,0,0];
-    if(wave===2)return[55,10,12,0,0,0,5,10,8,0,0,0,0,0,0,0,0,0,0];
-    if(wave===3)return[35,15,12,0,5,0,8,10,5,5,0,0,0,0,5,0,0,0,0];
-    if(wave===4)return[30,13,11,5,5,0,9,8,5,5,0,3,0,0,4,2,0,0,0];
-    if(wave===5)return[22,11,11,7,7,0,9,7,7,6,5,4,0,0,4,3,2,0,0];
-    if(wave===6)return[18,10,10,8,7,4,9,7,6,6,5,5,3,0,5,4,3,2,0];
-    if(wave===7)return[15,9,10,9,8,5,9,6,6,6,6,6,4,2,5,4,4,3,2];
-    if(wave<=9)return[13,9,9,10,9,6,9,5,5,6,7,7,5,4,5,4,5,4,4];
-    if(wave<=15)return[10,8,8,10,9,7,9,4,4,7,7,8,6,5,7,6,6,5,5];
-    return[8,7,7,11,10,8,9,3,3,8,8,9,7,7,8,7,7,7,6];  // late game: maximum variety
+    // [Jello, Brute, Speeder, Crusher, Splitter, Phantom, Witch, Tomato, Slug, Disco, Pepper, Exploder, Summoner, Shielder, Charger, AcidGlob, Shrieker, Vampire, Duplicator, Kamikaze]
+    if(wave<=1)return[80,0,10,0,0,0,0,10,0,0,0,0,0,0,0,0,0,0,0,0];
+    if(wave===2)return[55,10,12,0,0,0,5,10,8,0,0,0,0,0,0,0,0,0,0,0];
+    if(wave===3)return[35,15,12,0,5,0,8,10,5,5,0,0,0,0,5,0,0,0,0,0];
+    if(wave===4)return[30,13,11,5,5,0,9,8,5,5,0,3,0,0,4,2,0,0,0,0];
+    if(wave===5)return[22,11,11,7,7,0,9,7,7,6,5,4,0,0,4,3,2,0,0,2];   // kamikaze starts here, rare
+    if(wave===6)return[18,10,10,8,7,4,9,7,6,6,5,5,3,0,5,4,3,2,0,3];
+    if(wave===7)return[15,9,9,9,8,5,9,6,6,6,6,6,4,2,5,4,4,3,2,3];
+    if(wave<=9)return[13,9,9,10,9,6,9,5,5,6,7,7,5,4,5,4,5,4,4,4];
+    if(wave<=15)return[10,8,8,10,9,7,9,4,4,7,7,8,6,5,7,6,6,5,5,5];
+    return[8,7,7,11,10,8,9,3,3,8,8,9,7,7,8,7,7,7,6,6];
   },
   _pick(wave){
     const w=this._typeWeights(wave);const total=w.reduce((a,b)=>a+b,0);
     let r=Math.random()*total;
-    const types=[Jello,Brute,Speeder,Crusher,Splitter,Phantom,Witch,Tomato,BananaSlug,DiscoZombie,GhostPepper,Exploder,Summoner,Shielder,Charger,AcidGlob,Shrieker,Vampire,Duplicator];
+    const types=[Jello,Brute,Speeder,Crusher,Splitter,Phantom,Witch,Tomato,BananaSlug,DiscoZombie,GhostPepper,Exploder,Summoner,Shielder,Charger,AcidGlob,Shrieker,Vampire,Duplicator,Kamikaze];
     for(let i=0;i<types.length;i++){r-=w[i];if(r<=0)return types[i];}
     return Jello;
   },
@@ -11599,6 +11824,7 @@ const UI={
         {id:'shrieker',name:'SHRIEKER',icon:'😱',color:'#ff88cc',sub:'SUPPORT',desc:'Every 3s shrieks · buffs nearby enemies +50% speed for 2s · 55 HP · 3 XP'},
         {id:'vampire',name:'VAMPIRE BAT',icon:'🧛',color:'#aa0033',sub:'LIFESTEAL',desc:'Heals itself for 50% of damage it deals to you · 65 HP · 95 speed · 9 contact dmg · 3 XP'},
         {id:'duplicator',name:'DUPLICATOR',icon:'⧉',color:'#44ffee',sub:'SPLITS',desc:'Every 8s spawns a 60% HP clone (max 2 clones each) · 70 HP · 50 speed · 8 contact dmg · 3 XP'},
+        {id:'kamikaze',name:'KAMIKAZE BOMBER',icon:'💣',color:'#222222',sub:'DEADLY',desc:'⚠ INSTAKILLS you on death within 200px · 35 HP · DON\'T kill it up close · 8 XP'},
       ];
       return list.map(e=>({...e,unlocked:!!Save.data.codexUnlockAll||!!Save.data.codexFound?.enemies?.[e.id]}));
     }
