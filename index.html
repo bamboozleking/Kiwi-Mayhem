@@ -51,6 +51,8 @@
 'use strict';
 const canvas=document.getElementById('gameCanvas');
 const ctx=canvas.getContext('2d');
+// Bump this on every release — shown in main menu so users can confirm they've got the latest
+const GAME_VERSION='v2.3';
 // Virtual design resolution — game UI was authored for ~1920x1080.
 // We render at this fixed internal size and CSS-scale the canvas to fit
 // the device viewport, so the layout is identical on phone and desktop.
@@ -10218,9 +10220,14 @@ const UI={
       ctx.fillText(btn.label,bx,by+6);
       ctx.shadowBlur=0;
     });
-    // Version / dual currency display
+    // Currency display (bottom center)
     ctx.fillStyle='rgba(120,140,180,0.55)';ctx.font='11px monospace';ctx.textAlign='center';
-    ctx.fillText(`🥝 ${Save.data.kiwis}  ·  🐦 ${Save.data.birds}  ·  🪶 ${Save.data.feathers}/5  ·  v2.2`,cx,canvas.height-20);
+    ctx.fillText(`🥝 ${Save.data.kiwis}  ·  🐦 ${Save.data.birds}  ·  🪶 ${Save.data.feathers}/5`,cx,canvas.height-20);
+    // Version (bottom right) — bumped each update
+    ctx.fillStyle='rgba(170,200,255,0.75)';ctx.font='bold 12px monospace';ctx.textAlign='right';
+    ctx.shadowColor='#44aaff';ctx.shadowBlur=6;
+    ctx.fillText(GAME_VERSION,canvas.width-18,canvas.height-20);
+    ctx.shadowBlur=0;
     // Controller diagnostic strip (visible so the user can see if it's working)
     const padDetected=Gamepads.anyConnected();
     ctx.fillStyle=padDetected?'rgba(140,255,140,0.85)':'rgba(255,180,140,0.7)';
@@ -10292,7 +10299,7 @@ const UI={
     this.panel(conX,conY,conW,conH,12,0.82);
     // Compute scroll bounds before clipping
     const items=this._codexItems(this._codexTab);
-    const cols=5,cellW=Math.floor((conW-40)/cols),cellH=140;
+    const cols=4,cellW=Math.floor((conW-40)/cols),cellH=210;
     const rows=Math.ceil(items.length/cols);
     const totalH=rows*cellH+40;
     const visibleH=conH-20;
@@ -10336,13 +10343,14 @@ const UI={
       ctx.fillStyle=unlocked?(it.color||'rgba(180,180,200,0.6)'):'rgba(80,80,100,0.5)';
       ctx.font='9px monospace';
       ctx.fillText(it.sub||'',x+cellW/2,y+90);
-      // Description (wrapped)
-      ctx.fillStyle=unlocked?'rgba(220,220,240,0.7)':'rgba(80,80,100,0.5)';
-      ctx.font='9px monospace';
+      // Description (wrapped) — wider wrap now that cells are bigger
+      ctx.fillStyle=unlocked?'rgba(220,220,240,0.78)':'rgba(80,80,100,0.5)';
+      ctx.font='10px monospace';
       const desc=unlocked?(it.desc||''):'Locked · play to discover';
-      const words=desc.split(' ');let line='',ly=y+106;
+      const words=desc.split(' ');let line='',ly=y+108;
+      const maxChars=Math.floor((cellW-30)/6);  // adaptive to cell width
       for(const w of words){
-        if((line+w).length>16){ctx.fillText(line,x+cellW/2,ly);ly+=11;line=w+' ';if(ly>y+cellH-14)break;}
+        if((line+w).length>maxChars){ctx.fillText(line,x+cellW/2,ly);ly+=12;line=w+' ';if(ly>y+cellH-14)break;}
         else line+=w+' ';
       }
       if(ly<=y+cellH-14)ctx.fillText(line,x+cellW/2,ly);
@@ -10413,77 +10421,103 @@ const UI={
       return (a.name||'').localeCompare(b.name||'');
     });
     if(tab==='characters'){
-      return _sort(Object.entries(CHAR_DEFS).map(([id,c])=>({
-        id,name:c.name,icon:'★',color:c.color,sub:(c.rarity||'common').toUpperCase(),
-        desc:c.desc,unlocked:Save.isCharUnlocked(id)
-      })));
+      return _sort(Object.entries(CHAR_DEFS).map(([id,c])=>{
+        const ult=typeof ULT_DEFS!=='undefined'?ULT_DEFS[id]:null;
+        const lines=[c.desc];
+        lines.push(`HP ${c.hp}  ·  SPD ${c.speed}`);
+        if(c.passive)lines.push(`Passive: ${c.passive}`);
+        if(c.qName)lines.push(`Q · ${c.qName}: ${c.qDesc||''}`);
+        if(ult)lines.push(`F (lvl 5) · ${ult.name}: ${ult.desc||''}`);
+        return {
+          id,name:c.name,icon:'★',color:c.color,sub:(c.rarity||'common').toUpperCase(),
+          desc:lines.join(' · '),unlocked:Save.isCharUnlocked(id)
+        };
+      }));
     }
     if(tab==='weapons'){
-      return _sort(Object.entries(WEAPON_DEFS).map(([id,w])=>({
-        id,name:w.name,icon:'⚔',color:w.color||'#ffaa44',
-        sub:(w.rarity||'common').toUpperCase()+' · '+(w.class||''),
-        desc:w.desc||`${w.dmg} dmg · ${w.rof} rof`,
-        unlocked:Save.isWeaponUnlocked(id)
-      })));
+      return _sort(Object.entries(WEAPON_DEFS).map(([id,w])=>{
+        const parts=[];
+        if(w.desc)parts.push(w.desc);
+        parts.push(`Dmg ${w.dmg}  ·  RoF ${w.rof}/s  ·  Mag ${w.magSize}`);
+        if(w.maxAmmo)parts.push(`Reserve ${w.maxAmmo}  ·  Reload ${w.reloadTime}s`);
+        if(w.pellets&&w.pellets>1)parts.push(`${w.pellets} pellets/shot`);
+        if(w.pierce&&w.pierce>1)parts.push(`Pierces ${w.pierce}`);
+        if(w.auto)parts.push('Auto-fire');
+        return {
+          id,name:w.name,icon:'⚔',color:w.color||'#ffaa44',
+          sub:(w.rarity||'common').toUpperCase()+' · '+(w.class||''),
+          desc:parts.join(' · '),
+          unlocked:Save.isWeaponUnlocked(id)
+        };
+      }));
     }
     if(tab==='careWeapons'){
       return Object.entries(CARE_WEAPON_DEFS).map(([id,w])=>({
         id,name:w.name,icon:'📦',color:w.color||'#ffdd44',sub:'MYTHIC · '+(w.class||''),
-        desc:`${w.dmg} dmg · single mag`,
-        unlocked:!!Save.data.codexFound?.careWeapons?.[id]||!!Save.data.weapons?.includes('katana')
+        desc:`${w.dmg} dmg · ${w.magSize} shots · single magazine · ${w.pellets>1?w.pellets+' pellets · ':''}drops from care packages only`,
+        unlocked:!!Save.data.codexUnlockAll||!!Save.data.codexFound?.careWeapons?.[id]
       }));
     }
     if(tab==='pets'){
       return _sort(COMPANION_DEFS.map(p=>({
         id:p.id,name:p.name,icon:p.icon||'🐾',color:p.color,sub:(p.rarity||'common').toUpperCase(),
-        desc:p.effect||p.desc||'',
+        desc:(p.effect||p.desc||'')+(p.cost?` · Cost ${p.cost} 🐦`:' · Starter pet'),
         unlocked:!!(Save.data.pets&&Save.data.pets.unlocked&&Save.data.pets.unlocked[p.id])
       })));
     }
     if(tab==='abilities'){
-      return _sort(UPGRADES.map(u=>({
-        id:u.id,name:u.name,icon:u.icon,color:u.color,
-        sub:(u.rarity||'common').toUpperCase(),
-        desc:u.desc(1),
-        unlocked:!!Save.data.codexFound?.abilities?.[u.id]||!!Save.data.codexUnlockAll
-      })));
+      return _sort(UPGRADES.map(u=>{
+        const lvl1=u.desc(1),lvl6=u.desc(u.maxStacks||6);
+        const lines=[`Lvl 1: ${lvl1}`];
+        if(lvl1!==lvl6)lines.push(`Lvl ${u.maxStacks||6}: ${lvl6}`);
+        lines.push(`Max ${u.maxStacks||6} stacks · evolves at max`);
+        return {
+          id:u.id,name:u.name,icon:u.icon,color:u.color,
+          sub:(u.rarity||'common').toUpperCase(),
+          desc:lines.join(' · '),
+          unlocked:!!Save.data.codexUnlockAll||!!Save.data.codexFound?.abilities?.[u.id]
+        };
+      }));
     }
     if(tab==='evolutions'){
-      return Object.entries(EVOLUTIONS).map(([id,e])=>({
-        id,name:e.name,icon:e.icon,color:e.color,sub:'MYTHIC EVOLUTION',
-        desc:e.desc,
-        unlocked:!!Save.data.codexFound?.evolutions?.[id]||!!Save.data.codexUnlockAll
-      }));
+      return Object.entries(EVOLUTIONS).map(([id,e])=>{
+        const baseUpg=UPGRADES.find(u=>u.id===id);
+        return {
+          id,name:e.name,icon:e.icon,color:e.color,sub:'MYTHIC EVOLUTION',
+          desc:`${e.desc} · Evolves from ${baseUpg?baseUpg.name:id} at max stacks · Limited to 3 per run`,
+          unlocked:!!Save.data.codexUnlockAll||!!Save.data.codexFound?.evolutions?.[id]
+        };
+      });
     }
     if(tab==='enemies'){
       const list=[
-        {id:'jello',name:'JELLO',icon:'●',color:'#ff64b4',sub:'BASIC',desc:'Wobbling blob. Spawns in swarms.'},
-        {id:'brute',name:'BRUTE ZOMBIE',icon:'🧟',color:'#5d8a3a',sub:'TANK',desc:'Slow hunched zombie · high HP'},
-        {id:'speeder',name:'SKELETON',icon:'💀',color:'#e8e0d0',sub:'FAST',desc:'Sprinting skeleton · thin · quick'},
-        {id:'crusher',name:'CRUSHER',icon:'🟪',color:'#7a3aaa',sub:'HEAVY',desc:'Hulking armored brute'},
-        {id:'splitter',name:'SPLITTER',icon:'⬟',color:'#ff44cc',sub:'SPLITS',desc:'Splits into smaller copies on death'},
-        {id:'phantom',name:'PHANTOM',icon:'👻',color:'#88aaff',sub:'TELEPORT',desc:'Teleports near player'},
-        {id:'witch',name:'WITCH',icon:'🧙',color:'#aa44ff',sub:'CASTER',desc:'Casts purple magic spells from range'},
-        {id:'tomato',name:'TOMATO',icon:'🍅',color:'#ff3344',sub:'BOUNCY',desc:'Bouncing red blob · fast'},
-        {id:'slug',name:'BANANA SLUG',icon:'🐌',color:'#ffee22',sub:'TRAIL',desc:'Leaves slowing slime trail'},
-        {id:'disco',name:'DISCO ZOMBIE',icon:'🕺',color:'#ff44ff',sub:'DASHER',desc:'Dashes toward player'},
-        {id:'pepper',name:'GHOST PEPPER',icon:'🌶',color:'#ff8822',sub:'SPICY',desc:'Hot · fast · burns on contact'},
-        {id:'exploder',name:'EXPLODER',icon:'💣',color:'#ff4422',sub:'KAMIKAZE',desc:'Charges fast · explodes in big AoE on death'},
-        {id:'summoner',name:'SUMMONER',icon:'🧙',color:'#aa44ff',sub:'CASTER',desc:'Stationary · summons mini jellos around it'},
-        {id:'shielder',name:'SHIELDER',icon:'🛡',color:'#888899',sub:'ARMORED',desc:'Frontal shield blocks 60% damage · flank to kill'},
+        {id:'jello',name:'JELLO',icon:'●',color:'#ff64b4',sub:'BASIC',desc:'Wobbling blob · spawns in swarms · 38 HP · 72 speed · 5 contact dmg · 1 XP'},
+        {id:'brute',name:'BRUTE ZOMBIE',icon:'🧟',color:'#5d8a3a',sub:'TANK',desc:'Slow hunched zombie · 70 HP · 48 speed · 10 contact dmg · 3 XP'},
+        {id:'speeder',name:'SKELETON',icon:'💀',color:'#e8e0d0',sub:'FAST',desc:'Sprinting skeleton · thin · 36 HP · 170 speed · 5 contact dmg · 2 XP'},
+        {id:'crusher',name:'CRUSHER',icon:'🟪',color:'#7a3aaa',sub:'HEAVY',desc:'Hulking armored brute · 120 HP · 34 speed · 15 contact dmg · 5 XP'},
+        {id:'splitter',name:'SPLITTER',icon:'⬟',color:'#ff44cc',sub:'SPLITS',desc:'Splits into 2 smaller copies on death · 46 HP · 62 speed · 5 contact dmg'},
+        {id:'phantom',name:'PHANTOM',icon:'👻',color:'#88aaff',sub:'TELEPORT',desc:'Teleports near player every 2-4s · 48 HP · 92 speed · 10 contact dmg'},
+        {id:'witch',name:'WITCH',icon:'🧙',color:'#aa44ff',sub:'CASTER',desc:'Casts purple magic spells from range · 42 HP · 60 speed · spell 10 dmg'},
+        {id:'tomato',name:'TOMATO',icon:'🍅',color:'#ff3344',sub:'BOUNCY',desc:'Bouncing red blob · fast · 32 HP · 110 speed · 6 contact dmg'},
+        {id:'slug',name:'BANANA SLUG',icon:'🐌',color:'#ffee22',sub:'TRAIL',desc:'Leaves slowing slime trail behind it · 46 HP · 50 speed · 7 contact dmg'},
+        {id:'disco',name:'DISCO ZOMBIE',icon:'🕺',color:'#ff44ff',sub:'DASHER',desc:'Periodically dashes toward player · 40 HP · 80 speed · 6 contact dmg'},
+        {id:'pepper',name:'GHOST PEPPER',icon:'🌶',color:'#ff8822',sub:'SPICY',desc:'Hot · fast · burns on contact · 30 HP · 90 speed · 5 contact dmg'},
+        {id:'exploder',name:'EXPLODER',icon:'💣',color:'#ff4422',sub:'KAMIKAZE',desc:'Charges fast · explodes in big AoE on death · 42 HP · 130 speed · 25 dmg blast'},
+        {id:'summoner',name:'SUMMONER',icon:'🧙',color:'#aa44ff',sub:'CASTER',desc:'Stationary · summons 2-3 mini jellos every 5s · 80 HP · 6 contact dmg'},
+        {id:'shielder',name:'SHIELDER',icon:'🛡',color:'#888899',sub:'ARMORED',desc:'Frontal shield blocks 60% damage · flank to kill · 140 HP · 42 speed · 14 contact dmg'},
       ];
-      return list.map(e=>({...e,unlocked:!!Save.data.codexFound?.enemies?.[e.id]||!!Save.data.codexUnlockAll}));
+      return list.map(e=>({...e,unlocked:!!Save.data.codexUnlockAll||!!Save.data.codexFound?.enemies?.[e.id]}));
     }
     if(tab==='bosses'){
       const list=[
-        {id:'queen',name:'PINK QUEEN',icon:'👑',color:'#cc0066',sub:'WAVE 10 · BASE',desc:'The standard boss · pink hue'},
-        {id:'void',name:'VOID HUNTER',icon:'🌑',color:'#6622aa',sub:'WAVE 20 · FAST',desc:'Teleporting purple stalker'},
-        {id:'inferno',name:'INFERNAL TITAN',icon:'🔥',color:'#cc3300',sub:'WAVE 30 · TANK',desc:'Burning trail · heavy hits'},
-        {id:'frost',name:'ICE WARDEN',icon:'❄',color:'#3388cc',sub:'WAVE 40 · CONTROL',desc:'Slows the player on contact'},
-        {id:'storm',name:'STORMCALLER',icon:'⚡',color:'#ddaa22',sub:'WAVE 50 · MAGIC',desc:'Calls lightning strikes'},
-        {id:'miniboss',name:'MINI-BOSS',icon:'☠',color:'#ff8844',sub:'WAVE 5/15/25...',desc:'Buffed elite of any enemy type'},
+        {id:'queen',name:'PINK QUEEN',icon:'👑',color:'#cc0066',sub:'WAVE 10 · BASE',desc:'Standard pink boss · 1700+ HP · 60 speed · 48 contact dmg · scales with tier · drops chest + bird'},
+        {id:'void',name:'VOID HUNTER',icon:'🌑',color:'#6622aa',sub:'WAVE 20 · FAST',desc:'Teleporting purple stalker · +15% HP, +25% speed vs queen · drops chest + bird'},
+        {id:'inferno',name:'INFERNAL TITAN',icon:'🔥',color:'#cc3300',sub:'WAVE 30 · TANK',desc:'Burning trail · +35% HP, +25% dmg · slower · drops chest + bird · BossEvo kicks in here'},
+        {id:'frost',name:'ICE WARDEN',icon:'❄',color:'#3388cc',sub:'WAVE 40 · CONTROL',desc:'Slows the player on contact · +20% HP, +15% dmg · 2 BossEvo modifiers stack'},
+        {id:'storm',name:'STORMCALLER',icon:'⚡',color:'#ddaa22',sub:'WAVE 50 · MAGIC',desc:'Calls lightning strikes · +25% HP, +20% dmg, +10% speed · multiple BossEvo mods'},
+        {id:'miniboss',name:'MINI-BOSS',icon:'☠',color:'#ff8844',sub:'WAVE 5/15/25...',desc:'Buffed elite of any enemy type · 5.5× HP · 2.5× damage · 1.5× size · 1.4× speed · drops chest + 2 birds'},
       ];
-      return list.map(b=>({...b,unlocked:!!Save.data.codexFound?.bosses?.[b.id]||!!Save.data.codexUnlockAll}));
+      return list.map(b=>({...b,unlocked:!!Save.data.codexUnlockAll||!!Save.data.codexFound?.bosses?.[b.id]}));
     }
     return [];
   },
