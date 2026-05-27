@@ -3460,6 +3460,83 @@ const UPGRADES=[
     apply:p=>{p.vsAbilities=p.vsAbilities||{};p.vsAbilities.doomsday=(p.vsAbilities.doomsday||0)+1;}},
 ];
 
+// ─── EVOLUTIONS ────────────────────────────────────────────────
+// When an ability hits max stacks (6), it can EVOLVE into a stronger version.
+// Cap: player can only evolve 3 of their abilities per run.
+// Engine effect: evolved ability level is bumped to maxStacks+6, which makes
+// the existing scaling formulas produce a roughly 1.7-2× power boost.
+const EVOLUTIONS={
+  holy_aura:        {name:'☀ SUN AURA',          icon:'☀',color:'#ffeb44',desc:'Larger radius · burns enemies'},
+  orbit_dagger:     {name:'⚔ BLADE HALO',        icon:'⚔',color:'#aaffff',desc:'More blades · longer reach'},
+  magic_wand:       {name:'❉ ARCANE WAND',       icon:'❉',color:'#ddffff',desc:'Faster · pierces all'},
+  whip:             {name:'➤ BLOODY TEAR',       icon:'➤',color:'#ff6666',desc:'Faster strikes · lifesteal'},
+  throwing_knife:   {name:'🗡 THOUSAND CUTS',    icon:'🗡',color:'#ffffff',desc:'Twice the knives · pierces'},
+  lightning_ring:   {name:'⚡ THUNDER LOOP',      icon:'⚡',color:'#ffff44',desc:'Chains between enemies'},
+  frozen_field:     {name:'❄ ETERNAL WINTER',    icon:'❄',color:'#aaeeff',desc:'Aura now damages over time'},
+  fire_wand:        {name:'🔥 HELLFIRE WAND',    icon:'🔥',color:'#ff4400',desc:'Faster · larger fireballs'},
+  hellfire:         {name:'💀 INFERNO ORBS',     icon:'💀',color:'#ff0000',desc:'More orbs · explode on death'},
+  bone_boomerang:   {name:'☋ SOUL BOOMERANG',   icon:'☋',color:'#ffffff',desc:'More bones · returns faster'},
+  cross:            {name:'✚ DIVINE CROSS',      icon:'✚',color:'#fff088',desc:'Faster · larger pattern'},
+  garlic:           {name:'🌿 NIGHT EATER',      icon:'🌿',color:'#88ff88',desc:'Larger range · heals on kill'},
+  death_spiral:     {name:'☯ VOID SPIRAL',       icon:'☯',color:'#cc44ff',desc:'Massive range · doubled damage'},
+  santa_water:      {name:'💧 HOLY DELUGE',      icon:'💧',color:'#44ddff',desc:'More pools · longer duration'},
+  axe_throw:        {name:'🪓 GIANT AXES',       icon:'🪓',color:'#ddaa44',desc:'More axes · pierces'},
+  card_fan:         {name:'♠ DEATH HAND',       icon:'♠',color:'#ff44aa',desc:'Twice the cards · longer pierce'},
+  storm:            {name:'⛈ ZEUS WRATH',        icon:'⛈',color:'#ccddff',desc:'Multiple bolts per strike'},
+  soul_vacuum:      {name:'⊙ VOID SUCK',         icon:'⊙',color:'#88ffee',desc:'Pulls everything · much farther'},
+  pet_bird:         {name:'🦅 FALCON STORM',     icon:'🦅',color:'#ffaa66',desc:'3 birds · faster pecks'},
+  sigil_death:      {name:'⚝ DEATH ANCHOR',      icon:'⚝',color:'#cc00ff',desc:'Larger · faster · stronger'},
+  drone_buddy:      {name:'🛸 DRONE SQUAD',      icon:'🛸',color:'#aaeeff',desc:'2 drones · faster fire'},
+  molotov:          {name:'🍾 INFERNAL FLASK',   icon:'🍾',color:'#ff4400',desc:'Bigger pool · longer burn'},
+  shuriken_burst:   {name:'✴ SHURIKEN STORM',    icon:'✴',color:'#ffffff',desc:'Double count · longer range'},
+  durian_bomb:      {name:'🥥 MEGA DURIAN',      icon:'🥥',color:'#aaff44',desc:'Huge AoE · faster cooldown'},
+  defender_drone:   {name:'⚙ DRONE ARMORY',     icon:'⚙',color:'#aaeeff',desc:'More drones · contact AoE'},
+  missile_swarm:    {name:'🚀 ARMAGEDDON',       icon:'🚀',color:'#ff5522',desc:'Many missiles · bigger blast'},
+  poison_cloud:     {name:'☁ TOXIC FOG',         icon:'☁',color:'#88ff00',desc:'Larger · stronger poison'},
+  thunder_hammer:   {name:'🔨 MJOLNIR',          icon:'🔨',color:'#ffff44',desc:'Faster · much bigger AoE'},
+  reflector:        {name:'◈ EVENT HORIZON',     icon:'◈',color:'#44ffff',desc:'Constant · stronger pulse'},
+  meteor_strike:    {name:'☄ APOCALYPSE',       icon:'☄',color:'#ff6644',desc:'Twin meteors · larger crater'},
+  ice_lance:        {name:'🧊 ABSOLUTE ZERO',   icon:'🧊',color:'#aaeeff',desc:'Auto-targets 3 enemies'},
+  solar_flare:      {name:'☀ SUPERNOVA',         icon:'☀',color:'#ffff88',desc:'Insane radius · doubled dmg'},
+  blade_storm:      {name:'⚔ BLADE TYPHOON',    icon:'⚔',color:'#ffffff',desc:'More blades · wider radius'},
+  gravity_bomb:     {name:'⊛ BLACK HOLE',        icon:'⊛',color:'#aa44ff',desc:'Massive pull · stronger blast'},
+  chain_strike:     {name:'⚡ DEATH CASCADE',     icon:'⚡',color:'#ffee22',desc:'Bigger blasts · chains'},
+  cryo_burst:       {name:'❄ ARCTIC NOVA',       icon:'❄',color:'#aaeeff',desc:'Larger · permafreeze'},
+  fire_trail:       {name:'🔥 ASH PATH',         icon:'🔥',color:'#ff5500',desc:'Longer burn · wider trail'},
+  vampiric_aura:    {name:'❤ BLOOD COVENANT',   icon:'❤',color:'#cc2244',desc:'Heal on every enemy hit'},
+  turret_deploy:    {name:'⌗ AUTO SENTRY',       icon:'⌗',color:'#88ff88',desc:'Lasts 12s · faster fire'},
+  doomsday:         {name:'☢ ANNIHILATION',     icon:'☢',color:'#ff00ff',desc:'Charges faster · huge blast'},
+};
+
+// Find evolution offers for the player at level-up time
+function findEvolutionOffers(player){
+  if((player.vsEvolveCount||0)>=3)return [];
+  if(!player.vsAbilities)return [];
+  const evolved=player.vsEvolved||new Set();
+  const offers=[];
+  for(const id in player.vsAbilities){
+    if(evolved.has(id))continue;
+    if(!EVOLUTIONS[id])continue;
+    const baseUpg=UPGRADES.find(u=>u.id===id);
+    if(!baseUpg)continue;
+    if((player.vsAbilities[id]||0)<baseUpg.maxStacks)continue;
+    const evo=EVOLUTIONS[id];
+    offers.push({
+      id:'evo_'+id,isEvolution:true,originalId:id,
+      name:'✨ '+evo.name,icon:evo.icon,color:evo.color,
+      maxStacks:1,rarity:'mythic',
+      desc:_=>'EVOLUTION · '+evo.desc,
+      apply:p=>{
+        p.vsEvolved=p.vsEvolved||new Set();p.vsEvolved.add(id);
+        p.vsEvolveCount=(p.vsEvolveCount||0)+1;
+        // Boost effective level beyond max — existing engine formulas scale up
+        p.vsAbilities[id]=(baseUpg.maxStacks||6)+6;
+      }
+    });
+  }
+  return offers;
+}
+
 // ─── V/S ABILITY ENGINE ─────────────────────────────────────────
 // Drives all level-up auto-weapons every frame using p.vsAbilities[id]=level
 const VSEngine={
@@ -10467,6 +10544,15 @@ const Game={
       return arr.pop();
     }
     while(choices.length<3&&pool.length){const pick=_weightedPop(pool);if(!pick)break;choices.push(pick);}
+    // EVOLUTIONS — if any of the player's maxed abilities qualify and they
+    // still have room (max 3 evolutions per run), inject one as a guaranteed slot
+    const evoOffers=findEvolutionOffers(this.player);
+    if(evoOffers.length>0){
+      const evoChoice=evoOffers[Math.floor(Math.random()*evoOffers.length)];
+      // Replace the last choice with the evolution (so it always shows up)
+      if(choices.length>=3){choices[choices.length-1]=evoChoice;}
+      else {choices.push(evoChoice);}
+    }
     if(choices.length===0){UI.announce(`LEVEL ${this.player.level}`,1.5,'#44ffff');return;}
     this.levelUpChoices=choices;
     this.levelUpHover=-1;
@@ -10474,9 +10560,19 @@ const Game={
   },
   applyChoice(idx){
     const c=this.levelUpChoices[idx];if(!c)return;
-    this.player.applyUpgrade(c.id);
-    this.lastUpgrade=c.id;
-    UI.announce(c.name+'!',1.8,c.color);
+    if(c.isEvolution){
+      // Evolution: run the choice's own apply on the player, big visual feedback
+      c.apply(this.player);
+      AudioManager.play('ult_ready');
+      Camera.shake(6,0.5);
+      Particles.burst(this.player.x,this.player.y,40,{color:c.color,speed:240,life:0.9,r:6});
+      UI.announce(`★ EVOLVED · ${c.name} ★`,3,c.color);
+      this.lastUpgrade=c.originalId;
+    } else {
+      this.player.applyUpgrade(c.id);
+      this.lastUpgrade=c.id;
+      UI.announce(c.name+'!',1.8,c.color);
+    }
     // Try weapon evolution if upgrade matches the weapon's req tag
     WeaponEvo.tryEvolve(this.player,c.id);
     if(this.player2)WeaponEvo.tryEvolve(this.player2,c.id);
