@@ -8640,15 +8640,47 @@ const UI={
     // floating kiwi bg
     if(!this._menuKiwis){this._menuKiwis=[];for(let i=0;i<24;i++)this._menuKiwis.push({x:Math.random()*canvas.width,y:Math.random()*canvas.height,vy:-(6+Math.random()*10),sz:12+Math.random()*22,alpha:0.05+Math.random()*0.09,tp:Math.random()*Math.PI*2});}
     this._menuKiwis.forEach(k=>{k.y+=k.vy*0.016;k.tp+=0.018;if(k.y<-30)k.y=canvas.height+10;ctx.save();ctx.globalAlpha=k.alpha*(0.7+Math.sin(k.tp)*0.3);ctx.font=`${k.sz}px monospace`;ctx.textAlign='center';ctx.fillText('🥝',k.x,k.y);ctx.restore();});
-    // Title (smaller font + more headroom)
+    // Title — layered glow + cyan→magenta gradient + bottom-shadow + 3D extrusion feel
     const ts=1+Math.sin(t*1.2)*0.015;
     ctx.save();ctx.translate(cx,cy-210);ctx.scale(ts,ts);
-    ctx.shadowColor='#44ffff';ctx.shadowBlur=50;
-    ctx.fillStyle='#44ffff';ctx.font='bold 58px monospace';ctx.textAlign='center';ctx.fillText('KIWI MAYHEM',0,0);ctx.shadowBlur=0;
-    ctx.fillStyle='rgba(255,255,255,0.9)';ctx.font='bold 58px monospace';ctx.fillText('KIWI MAYHEM',0,0);ctx.restore();
+    // Outer atmospheric haze
+    ctx.shadowColor='#44ffff';ctx.shadowBlur=80;
+    ctx.fillStyle='rgba(68,255,255,0.35)';ctx.font='bold 58px monospace';ctx.textAlign='center';
+    ctx.fillText('KIWI MAYHEM',0,0);
+    // Magenta secondary glow (chromatic aberration feel)
+    ctx.shadowColor='#ff44aa';ctx.shadowBlur=40;
+    ctx.fillStyle='rgba(255,68,170,0.25)';
+    ctx.fillText('KIWI MAYHEM',2,2);
+    ctx.shadowBlur=0;
+    // Drop shadow extrude (3 offset copies for depth)
+    for(let d=4;d>=1;d--){
+      ctx.fillStyle=`rgba(8,8,30,${0.18*d})`;
+      ctx.fillText('KIWI MAYHEM',d,d);
+    }
+    // Main fill: vertical gradient cyan→white→magenta
+    const ttG=ctx.createLinearGradient(0,-30,0,30);
+    ttG.addColorStop(0,'#88ffff');
+    ttG.addColorStop(0.5,'#ffffff');
+    ttG.addColorStop(1,'#ff66cc');
+    ctx.fillStyle=ttG;
+    ctx.shadowColor='#44ffff';ctx.shadowBlur=18;
+    ctx.fillText('KIWI MAYHEM',0,0);
+    ctx.shadowBlur=0;
+    // Top specular highlight (thin slice)
+    ctx.save();
+    ctx.beginPath();ctx.rect(-300,-30,600,18);ctx.clip();
+    ctx.fillStyle='rgba(255,255,255,0.6)';
+    ctx.fillText('KIWI MAYHEM',0,0);
+    ctx.restore();
+    // Outline stroke for sharp edge definition
+    ctx.strokeStyle='rgba(20,40,80,0.85)';ctx.lineWidth=2;
+    ctx.strokeText('KIWI MAYHEM',0,0);
+    ctx.restore();
     // Subtitle — well below title, clear of toggle
-    ctx.fillStyle='rgba(180,220,255,0.55)';ctx.font='13px monospace';ctx.textAlign='center';
-    ctx.fillText('ARENA SHOOTER · WAVE SURVIVAL',cx,cy-160);
+    ctx.fillStyle='rgba(180,220,255,0.65)';ctx.font='13px monospace';ctx.textAlign='center';
+    ctx.shadowColor='#44ffff';ctx.shadowBlur=8;
+    ctx.fillText('· ARENA SHOOTER · WAVE SURVIVAL ·',cx,cy-160);
+    ctx.shadowBlur=0;
     // Player count toggle (above PLAY button) — moved down for clearance
     if(!Game.coopPlayers)Game.coopPlayers=1;
     const togY=cy-115,togW=260,togH=34;
@@ -8684,12 +8716,45 @@ const UI={
     btns.forEach((btn,i)=>{
       const bx=cx,by=baseY+i*46,bw=260,bh=38;
       const hover=mx>=bx-bw/2&&mx<=bx+bw/2&&my>=by-bh/2&&my<=by+bh/2;
-      if(hover){ctx.shadowColor=btn.color;ctx.shadowBlur=18;}
-      ctx.fillStyle=hover?`${btn.color}22`:'rgba(20,20,40,0.7)';
+      // Drop shadow
+      ctx.fillStyle='rgba(0,0,0,0.55)';
+      ctx.beginPath();ctx.roundRect(bx-bw/2+2,by-bh/2+4,bw,bh,10);ctx.fill();
+      // Multi-stop body gradient (top brighter)
+      const bgr=ctx.createLinearGradient(bx,by-bh/2,bx,by+bh/2);
+      if(hover){
+        bgr.addColorStop(0,`${btn.color}55`);
+        bgr.addColorStop(0.5,`${btn.color}33`);
+        bgr.addColorStop(1,`${btn.color}18`);
+      } else {
+        bgr.addColorStop(0,'rgba(36,40,70,0.82)');
+        bgr.addColorStop(0.5,'rgba(20,22,46,0.82)');
+        bgr.addColorStop(1,'rgba(10,12,28,0.82)');
+      }
+      if(hover){ctx.shadowColor=btn.color;ctx.shadowBlur=22;}
+      ctx.fillStyle=bgr;
+      ctx.beginPath();ctx.roundRect(bx-bw/2,by-bh/2,bw,bh,10);ctx.fill();
+      ctx.shadowBlur=0;
+      // Inner top sheen
+      const sh=ctx.createLinearGradient(bx,by-bh/2,bx,by-bh/2+8);
+      sh.addColorStop(0,'rgba(255,255,255,0.20)');
+      sh.addColorStop(1,'rgba(255,255,255,0)');
+      ctx.fillStyle=sh;
+      ctx.beginPath();ctx.roundRect(bx-bw/2+2,by-bh/2+1,bw-4,8,8);ctx.fill();
+      // Border (two-tone for bevel)
       ctx.strokeStyle=btn.color;ctx.lineWidth=hover?2.5:1.5;
-      ctx.beginPath();ctx.roundRect(bx-bw/2,by-bh/2,bw,bh,10);ctx.fill();ctx.stroke();ctx.shadowBlur=0;
-      ctx.fillStyle=hover?'#fff':btn.color;ctx.font=`bold ${hover?18:16}px monospace`;ctx.textAlign='center';
+      ctx.beginPath();ctx.roundRect(bx-bw/2,by-bh/2,bw,bh,10);ctx.stroke();
+      ctx.strokeStyle='rgba(0,0,0,0.4)';ctx.lineWidth=1;
+      ctx.beginPath();ctx.roundRect(bx-bw/2-0.5,by-bh/2-0.5,bw+1,bh+1,11);ctx.stroke();
+      // Decorative left accent bar (always visible, brighter on hover)
+      ctx.fillStyle=btn.color;ctx.globalAlpha=hover?1:0.7;
+      ctx.beginPath();ctx.roundRect(bx-bw/2+6,by-bh/2+8,3,bh-16,1.5);ctx.fill();
+      ctx.globalAlpha=1;
+      // Label with subtle shadow
+      ctx.shadowColor='rgba(0,0,0,0.6)';ctx.shadowBlur=hover?6:3;
+      ctx.fillStyle=hover?'#fff':btn.color;
+      ctx.font=`bold ${hover?18:16}px monospace`;ctx.textAlign='center';
       ctx.fillText(btn.label,bx,by+6);
+      ctx.shadowBlur=0;
     });
     // Version / dual currency display
     ctx.fillStyle='rgba(120,140,180,0.55)';ctx.font='11px monospace';ctx.textAlign='center';
