@@ -392,7 +392,11 @@ const Net={
           // Add to roster (next free slot)
           const slot=this._nextSlot();
           this.roster.push({peerId:pid,charId:'octane',weaponId:'r301',slot,isLocal:false,isHost:false});
+          // Send lobby immediately + again after delays — WebRTC data channels need a moment
           this._broadcastLobby();
+          setTimeout(()=>this._broadcastLobby(),300);
+          setTimeout(()=>this._broadcastLobby(),900);
+          setTimeout(()=>this._broadcastLobby(),2000);
         }
       });
       this.room.onPeerLeave(pid=>{
@@ -415,6 +419,11 @@ const Net={
       }
       this.enabled=true;
       this.status=asHost?`Room ${code} · waiting for players`:`Joined ${code} · waiting for host`;
+      // HOST: re-broadcast lobby every 2.5s so any late-joining peer eventually receives it.
+      if(asHost){
+        if(this._lobbyHeartbeat)clearInterval(this._lobbyHeartbeat);
+        this._lobbyHeartbeat=setInterval(()=>{if(this.isHost&&this.enabled)this._broadcastLobby();},2500);
+      }
       return true;
     }catch(e){
       this.status='Connection failed: '+(e&&e.message||'unknown');
@@ -423,6 +432,7 @@ const Net={
     }
   },
   disconnect(){
+    if(this._lobbyHeartbeat){clearInterval(this._lobbyHeartbeat);this._lobbyHeartbeat=null;}
     if(this.room){try{this.room.leave();}catch(_){}}
     this.room=null;this.enabled=false;this.isHost=false;this.roomCode='';this.roster=[];this.inputs={};this.lastSnapshot=null;this.lobbyState=null;this.status='';
   },
@@ -464,7 +474,12 @@ const Net={
   // Roster getter for whoever needs it (always reflects local view)
   currentRoster(){
     if(this.isHost)return this.roster;
-    return (this.lobbyState&&this.lobbyState.roster)||[];
+    const list=(this.lobbyState&&this.lobbyState.roster)||[];
+    // Fallback: if host's broadcast hasn't arrived yet, at least show OURSELVES in the roster
+    if(list.length===0&&this.selfId){
+      return [{peerId:this.selfId,charId:this.myCharId||'octane',weaponId:this.myWeaponId||'r301',slot:0,isHost:false}];
+    }
+    return list;
   },
   playerCount(){return this.currentRoster().length;},
   // Host: ingest peer input, returns {peerId: latestInput}
@@ -632,7 +647,13 @@ const TouchControls={
   _end(e){
     for(const t of e.changedTouches){
       if(t.identifier===this.lId){this.lId=-1;this.lOrigin=null;this.lx=0;this.ly=0;}
-      if(t.identifier===this.rId){this.rId=-1;this.rOrigin=null;this.rx=0;this.ry=0;this.rActive=false;}
+      if(t.identifier===this.rId){
+        // For single-shot weapons, release = fire one shot in the last-aimed direction
+        if(this._isSingleShot()&&this.rActive&&(Math.abs(this.rx)>0.05||Math.abs(this.ry)>0.05)){
+          this.rReleased=true;
+        }
+        this.rId=-1;this.rOrigin=null;this.rx=0;this.ry=0;this.rActive=false;
+      }
       if(t.identifier===this.fireBtnTouchId){this.fireBtnDown=false;this.fireBtnTouchId=-1;}
       if(t.identifier===this._codexTouchId){this._codexTouchId=-1;this._codexTouchY=null;}
     }
@@ -663,16 +684,15 @@ const TouchControls={
     }
     // Shoot logic depends on weapon type:
     // - Auto weapons: right stick aims AND fires while held (held = continuous fire)
-    // - Single-shot/shotgun: right stick aims only, dedicated FIRE button shoots
+    // - Single-shot/shotgun: aim with right stick, FIRE ON RELEASE (lift finger to shoot once)
     const single=this._isSingleShot();
     if(!single){
       Input.mouse.down=this.rActive;
       if(this.rJust){Input.mouseJustPressed=true;this.rJust=false;}
     } else {
-      // Single-shot: NEVER auto-fire from the right stick — only the FIRE button shoots
-      Input.mouse.down=this.fireBtnDown;
-      if(this.fireBtnJust){Input.mouseJustPressed=true;this.fireBtnJust=false;}
-      // Clear right-stick just-pressed so we don't accidentally fire
+      // Single-shot: do NOT fire while held. Trigger one shot when the user lifts.
+      Input.mouse.down=false;
+      if(this.rReleased){Input.mouseJustPressed=true;Input.mouse.down=true;this.rReleased=false;}
       this.rJust=false;
     }
   },
@@ -791,30 +811,14 @@ const TouchControls={
     _btn(qc,'Q','#44aaff',qReady,pl?pl._qReadyFlash:0);
     _btn(rlc,'R','#ffaa44',false,0);
     _btn(fc,'F','#dd44ff',ultReady,pl?pl._ultReadyFlash:0);
-    // Dedicated FIRE button — only shown for single-shot weapons
+    // Single-shot indicator: small hint above the aim stick when weapon is single-shot
     if(this._isSingleShot()){
-      const fbc=this._fbc();
-      const fbR=this.R*0.7;
-      const pressed=this.fireBtnDown;
-      // Pulsing outer ring to draw attention
-      const pulse=0.5+0.5*Math.sin(performance.now()/350);
+      const rc=this._rc();
       ctx.save();
-      ctx.globalAlpha=0.25+pulse*0.18;
-      ctx.strokeStyle='#ff5555';ctx.lineWidth=3;
-      ctx.beginPath();ctx.arc(fbc.x,fbc.y,fbR+12+pulse*4,0,Math.PI*2);ctx.stroke();
-      // Solid filled button
-      ctx.globalAlpha=pressed?0.95:0.78;
-      ctx.fillStyle=pressed?'#ff8866':'#cc2222';
-      ctx.shadowColor='#ff4444';ctx.shadowBlur=pressed?30:14;
-      ctx.beginPath();ctx.arc(fbc.x,fbc.y,fbR,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='rgba(255,150,150,0.7)';ctx.font='bold 14px monospace';ctx.textAlign='center';
+      ctx.shadowColor='#ff4444';ctx.shadowBlur=8;
+      ctx.fillText('AIM · RELEASE TO FIRE',rc.x,rc.y-this.R-30);
       ctx.shadowBlur=0;
-      // White border
-      ctx.globalAlpha=1;ctx.strokeStyle='#ffffff';ctx.lineWidth=4;
-      ctx.beginPath();ctx.arc(fbc.x,fbc.y,fbR,0,Math.PI*2);ctx.stroke();
-      // Label
-      ctx.fillStyle='#ffffff';ctx.font='bold 30px monospace';ctx.textAlign='center';
-      ctx.shadowColor='#000';ctx.shadowBlur=4;
-      ctx.fillText('FIRE',fbc.x,fbc.y+10);ctx.shadowBlur=0;
       ctx.restore();
     }
     ctx.restore();
@@ -11565,6 +11569,8 @@ const Game={
     Gamepads.update();
     TouchControls.apply();
     MusicManager.update(dt);
+    // Run UI.update so announce timers (e.g. "ALL UNLOCKED") tick down in menus, not just gameplay
+    if(this.state!=='playing')UI.update(dt);
     // music track selection based on state
     if(this.state==='main_menu'||this.state==='char_select'||this.state==='weapon_select'||this.state==='settings'||this.state==='game_over'||this.state==='tree'||this.state==='stats'||this.state==='event'||this.state==='pets'){
       MusicManager.setTrack('menu');
