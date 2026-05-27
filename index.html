@@ -9008,8 +9008,10 @@ const UI={
     const bossWave=(wave%10===0);
     const nextIsBoss=((wave+1)%10===0);
     const bossActive=(typeof Spawner!=='undefined'&&Spawner.bossWaveActive);
-    const w=240,h=58,cx=canvas.width/2,cy=14;
-    const x=cx-w/2,y=cy;
+    // Positioned on the LEFT side, just to the right of the player HUD panel
+    const w=240,h=58;
+    const x=296,y=14;
+    const cx=x+w/2;
     // Pulsing color: pink during boss wave, red if next is boss imminent, cyan otherwise
     let col=bossActive?'#ff44aa':(nextIsBoss&&t<8?'#ff6644':'#44ffff');
     const pulse=0.5+0.5*Math.sin(performance.now()/350);
