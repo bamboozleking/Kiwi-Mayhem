@@ -497,9 +497,20 @@ const TouchControls={
   // Fullscreen toggle: top-left, larger hit area
   _fsc(){return{x:60,y:60};},
   _psc(){return{x:160,y:60};},  // pause button — to the right of FS
+  // FIRE button — used for single-shot weapons (shotguns, snipers, etc). Right joystick aims; this button fires.
+  _fbc(){const r=this._rc();return{x:r.x-this.R*1.5-30,y:r.y};},
+  fireBtnDown:false,fireBtnJust:false,fireBtnTouchId:-1,
   _hit(tx,ty,p){const dx=tx-p.x,dy=ty-p.y,hr=this.btnR+18;return dx*dx+dy*dy<hr*hr;},
   _hitFS(tx,ty){const p=this._fsc(),dx=tx-p.x,dy=ty-p.y;return dx*dx+dy*dy<45*45;},
   _hitPS(tx,ty){const p=this._psc(),dx=tx-p.x,dy=ty-p.y;return dx*dx+dy*dy<45*45;},
+  _hitFB(tx,ty){const p=this._fbc(),dx=tx-p.x,dy=ty-p.y,hr=this.R*0.7+20;return dx*dx+dy*dy<hr*hr;},
+  // True if current weapon should use the dedicated FIRE button (single-shot, shotgun)
+  _isSingleShot(){
+    if(typeof Game==='undefined'||!Game.player)return false;
+    const w=Game.player.careWeapon||Game.player.weapon;
+    if(!w)return false;
+    return !w.auto||(w.pellets||1)>1;
+  },
   _showHint:0,
   _toggleFS(){
     const el=document.documentElement;
@@ -565,6 +576,11 @@ const TouchControls={
       if(this._hit(p.x,p.y,this._qc())){Input.justPressed.add('KeyQ');continue;}
       if(this._hit(p.x,p.y,this._rlc())){Input.justPressed.add('KeyR');continue;}
       if(this._hit(p.x,p.y,this._fc())){Input.justPressed.add('KeyF');continue;}
+      // Dedicated FIRE button — only active for single-shot weapons
+      if(this._isSingleShot()&&this._hitFB(p.x,p.y)){
+        this.fireBtnDown=true;this.fireBtnJust=true;this.fireBtnTouchId=t.identifier;
+        continue;
+      }
       // Joystick zones: left half = move, right half = aim/fire
       if(p.x<canvas.width/2){
         if(this.lId===-1){this.lId=t.identifier;this.lOrigin={x:p.x,y:p.y};this.lx=0;this.ly=0;}
@@ -590,6 +606,7 @@ const TouchControls={
     for(const t of e.changedTouches){
       if(t.identifier===this.lId){this.lId=-1;this.lOrigin=null;this.lx=0;this.ly=0;}
       if(t.identifier===this.rId){this.rId=-1;this.rOrigin=null;this.rx=0;this.ry=0;this.rActive=false;}
+      if(t.identifier===this.fireBtnTouchId){this.fireBtnDown=false;this.fireBtnTouchId=-1;}
     }
   },
   apply(){
@@ -616,9 +633,20 @@ const TouchControls={
       }
       // Both sticks idle: keep last Input.mouse position — don't snap aim
     }
-    // Explicit shoot state so mouse.down never gets stuck true
-    Input.mouse.down=this.rActive;
-    if(this.rJust){Input.mouseJustPressed=true;this.rJust=false;}
+    // Shoot logic depends on weapon type:
+    // - Auto weapons: right stick aims AND fires while held (held = continuous fire)
+    // - Single-shot/shotgun: right stick aims only, dedicated FIRE button shoots
+    const single=this._isSingleShot();
+    if(!single){
+      Input.mouse.down=this.rActive;
+      if(this.rJust){Input.mouseJustPressed=true;this.rJust=false;}
+    } else {
+      // Single-shot: NEVER auto-fire from the right stick — only the FIRE button shoots
+      Input.mouse.down=this.fireBtnDown;
+      if(this.fireBtnJust){Input.mouseJustPressed=true;this.fireBtnJust=false;}
+      // Clear right-stick just-pressed so we don't accidentally fire
+      this.rJust=false;
+    }
   },
   draw(){
     if(!this.on)return;
@@ -735,6 +763,32 @@ const TouchControls={
     _btn(qc,'Q','#44aaff',qReady,pl?pl._qReadyFlash:0);
     _btn(rlc,'R','#ffaa44',false,0);
     _btn(fc,'F','#dd44ff',ultReady,pl?pl._ultReadyFlash:0);
+    // Dedicated FIRE button — only shown for single-shot weapons
+    if(this._isSingleShot()){
+      const fbc=this._fbc();
+      const fbR=this.R*0.7;
+      const pressed=this.fireBtnDown;
+      // Pulsing outer ring to draw attention
+      const pulse=0.5+0.5*Math.sin(performance.now()/350);
+      ctx.save();
+      ctx.globalAlpha=0.25+pulse*0.18;
+      ctx.strokeStyle='#ff5555';ctx.lineWidth=3;
+      ctx.beginPath();ctx.arc(fbc.x,fbc.y,fbR+12+pulse*4,0,Math.PI*2);ctx.stroke();
+      // Solid filled button
+      ctx.globalAlpha=pressed?0.95:0.78;
+      ctx.fillStyle=pressed?'#ff8866':'#cc2222';
+      ctx.shadowColor='#ff4444';ctx.shadowBlur=pressed?30:14;
+      ctx.beginPath();ctx.arc(fbc.x,fbc.y,fbR,0,Math.PI*2);ctx.fill();
+      ctx.shadowBlur=0;
+      // White border
+      ctx.globalAlpha=1;ctx.strokeStyle='#ffffff';ctx.lineWidth=4;
+      ctx.beginPath();ctx.arc(fbc.x,fbc.y,fbR,0,Math.PI*2);ctx.stroke();
+      // Label
+      ctx.fillStyle='#ffffff';ctx.font='bold 30px monospace';ctx.textAlign='center';
+      ctx.shadowColor='#000';ctx.shadowBlur=4;
+      ctx.fillText('FIRE',fbc.x,fbc.y+10);ctx.shadowBlur=0;
+      ctx.restore();
+    }
     ctx.restore();
   }
 };
@@ -4369,10 +4423,10 @@ let _eid=1000;
 function _waveDifficulty(wave){
   const w=Math.max(1,wave||1);
   return {
-    // Brutal scaling — enemies get tanky and hit hard fast
-    hp:    1 + (w-1)*0.12 + Math.max(0,w-10)*0.08 + Math.max(0,w-20)*0.10 + Math.max(0,w-30)*0.14,
-    dmg:   1 + (w-1)*0.09 + Math.max(0,w-10)*0.07 + Math.max(0,w-25)*0.10,
-    speed: 1 + (w-1)*0.022 + Math.max(0,w-15)*0.018
+    // Even more brutal scaling — enemies get tanky and hit hard fast
+    hp:    1 + (w-1)*0.14 + Math.max(0,w-10)*0.10 + Math.max(0,w-20)*0.12 + Math.max(0,w-30)*0.16,
+    dmg:   1 + (w-1)*0.10 + Math.max(0,w-10)*0.08 + Math.max(0,w-25)*0.12,
+    speed: 1 + (w-1)*0.024 + Math.max(0,w-15)*0.020
   };
 }
 class BaseEnemy{
@@ -4945,6 +4999,163 @@ class GhostPepper extends BaseEnemy{
 }
 
 // ─── BOSS (every 10 waves) ────────────────────────────────────
+// ─── EXPLODER — kamikaze. Charges player, explodes on contact. ────────
+class Exploder extends BaseEnemy{
+  constructor(x,y,wave=1){super(x,y,{kind:'exploder',r:16,hp:42+Math.floor(wave*3),speed:130+wave*8,contactDmg:25+wave*2,contactInterval:0.4,color:'#ff4422',xpDrop:3,wobSpd:5});this.fuse=null;}
+  _die(){
+    // Explosion on death
+    const R=140,dmg=this.contactDmg*1.5;
+    Particles.burst(this.x,this.y,28,{color:'#ff4422',speed:230,life:0.7,r:5});
+    Particles.burst(this.x,this.y,16,{color:'#ffee88',speed:140,life:0.45,r:4});
+    if(Game.player&&Game.player.alive){
+      const dx=Game.player.x-this.x,dy=Game.player.y-this.y;
+      if(dx*dx+dy*dy<R*R)Game.player.takeDamage(dmg,this.id);
+    }
+    if(Game.player2&&Game.player2.alive){
+      const dx=Game.player2.x-this.x,dy=Game.player2.y-this.y;
+      if(dx*dx+dy*dy<R*R)Game.player2.takeDamage(dmg,this.id);
+    }
+    // Chain-damage other enemies (FF for them is OK)
+    for(const e of Game.enemies){if(!e.alive||e===this)continue;const dx=e.x-this.x,dy=e.y-this.y;if(dx*dx+dy*dy<R*R)e.takeDamage(dmg*0.5);}
+    Camera.shake(4,0.3);AudioManager.play('explosion');
+    Effects.add({x:this.x,y:this.y,r:R,life:0.45,maxLife:0.45,
+      draw(){const sx=Camera.sx(this.x),sy=Camera.sy(this.y),f=1-this.life/this.maxLife;
+        ctx.save();ctx.globalCompositeOperation='lighter';ctx.globalAlpha=(1-f)*0.85;
+        const rg=ctx.createRadialGradient(sx,sy,8,sx,sy,this.r*f);
+        rg.addColorStop(0,'#ffffff');rg.addColorStop(0.4,'#ffaa22');rg.addColorStop(1,'rgba(255,40,0,0)');
+        ctx.fillStyle=rg;ctx.beginPath();ctx.arc(sx,sy,this.r*f,0,Math.PI*2);ctx.fill();
+        ctx.restore();ctx.shadowBlur=0;ctx.globalAlpha=1;}});
+    super._die();
+  }
+  _drawBody(sx,sy){
+    const fl=this.flashT>0,t=performance.now()/200;
+    const pulse=0.5+0.5*Math.sin(t);
+    // shadow
+    ctx.fillStyle='rgba(0,0,0,0.4)';ctx.beginPath();ctx.ellipse(sx+2,sy+this.r*0.8,this.r*0.85,this.r*0.28,0,0,Math.PI*2);ctx.fill();
+    // body — pulsing red orb
+    ctx.fillStyle=fl?'#fff':this.color;ctx.shadowColor='#ff4422';ctx.shadowBlur=fl?0:14+pulse*8;
+    ctx.beginPath();ctx.arc(sx,sy,this.r,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0;
+    // pulsing core
+    ctx.fillStyle=fl?'#fff':'#ffee44';ctx.globalAlpha=0.6+pulse*0.4;
+    ctx.beginPath();ctx.arc(sx,sy,this.r*0.55,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;
+    // angry eyes
+    ctx.fillStyle=fl?'#fff':'#000';
+    ctx.beginPath();ctx.arc(sx-this.r*0.32,sy-this.r*0.2,this.r*0.13,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc(sx+this.r*0.32,sy-this.r*0.2,this.r*0.13,0,Math.PI*2);ctx.fill();
+    // spike marks (warning)
+    ctx.strokeStyle=fl?'#fff':'#cc0000';ctx.lineWidth=2;
+    for(let i=0;i<6;i++){const a=t*0.6+i/6*Math.PI*2;ctx.beginPath();ctx.moveTo(sx+Math.cos(a)*this.r,sy+Math.sin(a)*this.r);ctx.lineTo(sx+Math.cos(a)*(this.r+5),sy+Math.sin(a)*(this.r+5));ctx.stroke();}
+  }
+}
+
+// ─── SUMMONER — stationary caster. Spawns mini-jellos near it ──────────
+class Summoner extends BaseEnemy{
+  constructor(x,y,wave=1){super(x,y,{kind:'summoner',r:18,hp:80+Math.floor(wave*5),speed:30,contactDmg:6,contactInterval:0.7,color:'#aa44ff',xpDrop:4,wobSpd:2});this.castT=4+Math.random();}
+  update(dt,player,target){
+    super.update(dt,player,target);
+    if(!this.alive)return;
+    this.castT-=dt;
+    if(this.castT<=0){
+      this.castT=5+Math.random()*2;
+      // Spawn 2-3 mini jellos around self
+      const n=2+Math.floor(Math.random()*2);
+      for(let i=0;i<n;i++){
+        const a=Math.random()*Math.PI*2,d=40+Math.random()*30;
+        const sx=this.x+Math.cos(a)*d,sy=this.y+Math.sin(a)*d;
+        const c=clampPoly(sx,sy,12);
+        Game.enemies.push(new Jello(c.x,c.y,Math.max(1,Spawner.wave-2)));
+      }
+      Particles.burst(this.x,this.y,12,{color:'#aa44ff',speed:130,life:0.6,r:4});
+    }
+  }
+  _drawBody(sx,sy){
+    const fl=this.flashT>0,t=performance.now()/250;
+    // shadow
+    ctx.fillStyle='rgba(0,0,0,0.4)';ctx.beginPath();ctx.ellipse(sx+2,sy+this.r*0.9,this.r,this.r*0.3,0,0,Math.PI*2);ctx.fill();
+    // hood / robe
+    ctx.fillStyle=fl?'#fff':'#440066';ctx.shadowColor='#aa44ff';ctx.shadowBlur=fl?0:14;
+    ctx.beginPath();
+    ctx.moveTo(sx-this.r*0.7,sy+this.r*0.6);
+    ctx.lineTo(sx-this.r*0.5,sy-this.r);
+    ctx.lineTo(sx,sy-this.r*1.4);
+    ctx.lineTo(sx+this.r*0.5,sy-this.r);
+    ctx.lineTo(sx+this.r*0.7,sy+this.r*0.6);
+    ctx.closePath();ctx.fill();ctx.shadowBlur=0;
+    // glowing eyes
+    ctx.fillStyle=fl?'#fff':this.color;ctx.shadowColor=this.color;ctx.shadowBlur=10;
+    ctx.beginPath();ctx.arc(sx-this.r*0.18,sy-this.r*0.5,this.r*0.12,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc(sx+this.r*0.18,sy-this.r*0.5,this.r*0.12,0,Math.PI*2);ctx.fill();
+    ctx.shadowBlur=0;
+    // floating orb above (cast indicator)
+    if(this.castT<1.5){
+      const orbPulse=0.6+0.4*Math.sin(t*3);
+      ctx.fillStyle=this.color;ctx.shadowColor=this.color;ctx.shadowBlur=14*orbPulse;
+      ctx.beginPath();ctx.arc(sx,sy-this.r*1.8,this.r*0.25*orbPulse,0,Math.PI*2);ctx.fill();
+      ctx.shadowBlur=0;
+    }
+  }
+}
+
+// ─── SHIELDER — armored brute. Reduces damage from front by 60% ────────
+class Shielder extends BaseEnemy{
+  constructor(x,y,wave=1){super(x,y,{kind:'shielder',r:20,hp:140+Math.floor(wave*7),speed:42+wave*3,contactDmg:14+wave,contactInterval:0.6,color:'#888899',xpDrop:4,wobSpd:1.5});}
+  takeDamage(amount,attackerId){
+    // Check if hit from the front (in the direction it's moving toward player)
+    if(!this.alive)return;
+    let reduction=1;
+    if(attackerId!=null&&Game.player){
+      const px=Game.player.x,py=Game.player.y;
+      const facingX=px-this.x,facingY=py-this.y;
+      const flen=Math.sqrt(facingX*facingX+facingY*facingY)||1;
+      const fx=facingX/flen,fy=facingY/flen;
+      // Damage source roughly in front? Use player position as proxy (since they fire bullets from there)
+      const sx=Game.player.x-this.x,sy=Game.player.y-this.y;
+      const slen=Math.sqrt(sx*sx+sy*sy)||1;
+      const dot=(sx/slen)*fx+(sy/slen)*fy;
+      if(dot>0.3)reduction=0.4;  // 60% reduction from front
+    }
+    super.takeDamage(amount*reduction);
+  }
+  _drawBody(sx,sy){
+    const fl=this.flashT>0,wb=Math.sin(this.wobble)*1.5;
+    // shadow
+    ctx.fillStyle='rgba(0,0,0,0.45)';ctx.beginPath();ctx.ellipse(sx+3,sy+this.r*0.85,this.r,this.r*0.3,0,0,Math.PI*2);ctx.fill();
+    // armored body
+    ctx.fillStyle=fl?'#fff':this.color;ctx.shadowColor='#aaaacc';ctx.shadowBlur=fl?0:6;
+    ctx.beginPath();ctx.roundRect(sx-this.r*0.6,sy-this.r*0.45+wb,this.r*1.2,this.r*0.95,5);ctx.fill();ctx.shadowBlur=0;
+    // metal plating
+    ctx.fillStyle=fl?'#fff':'#444466';
+    for(let i=0;i<3;i++){ctx.fillRect(sx-this.r*0.55,sy-this.r*0.4+wb+i*this.r*0.28,this.r*1.1,2);}
+    // helmet
+    ctx.fillStyle=fl?'#fff':'#666677';
+    ctx.beginPath();ctx.arc(sx,sy-this.r*0.55+wb,this.r*0.35,0,Math.PI*2);ctx.fill();
+    // eye slit
+    ctx.fillStyle=fl?'#fff':'#ff4444';ctx.shadowColor='#ff4444';ctx.shadowBlur=8;
+    ctx.fillRect(sx-this.r*0.18,sy-this.r*0.6+wb,this.r*0.36,2.5);ctx.shadowBlur=0;
+    // BIG SHIELD in front (facing player direction)
+    if(Game.player){
+      const dx=Game.player.x-this.x,dy=Game.player.y-this.y;
+      const ang=Math.atan2(dy,dx);
+      ctx.save();ctx.translate(sx,sy+wb*0.5);ctx.rotate(ang);
+      // shield body
+      ctx.fillStyle=fl?'#fff':'#666688';ctx.shadowColor='#8899bb';ctx.shadowBlur=fl?0:8;
+      ctx.beginPath();
+      ctx.moveTo(this.r*0.6,-this.r*0.7);
+      ctx.lineTo(this.r*1.1,-this.r*0.3);
+      ctx.lineTo(this.r*1.1,this.r*0.3);
+      ctx.lineTo(this.r*0.6,this.r*0.7);
+      ctx.closePath();ctx.fill();ctx.shadowBlur=0;
+      // shield boss
+      ctx.fillStyle=fl?'#fff':'#aaaacc';
+      ctx.beginPath();ctx.arc(this.r*0.85,0,this.r*0.18,0,Math.PI*2);ctx.fill();
+      // rim
+      ctx.strokeStyle=fl?'#fff':'#444466';ctx.lineWidth=2;
+      ctx.beginPath();ctx.moveTo(this.r*0.6,-this.r*0.7);ctx.lineTo(this.r*1.1,-this.r*0.3);ctx.lineTo(this.r*1.1,this.r*0.3);ctx.lineTo(this.r*0.6,this.r*0.7);ctx.stroke();
+      ctx.restore();
+    }
+  }
+}
+
 class Boss extends BaseEnemy{
   constructor(x,y,wave=10){
     const tier=Math.max(1,Math.floor(wave/10));
@@ -7996,21 +8207,22 @@ const Spawner={
   // Faster spawns: floor dropped from 0.25 → 0.15, ramps faster
   get spawnInterval(){return Math.max(0.15,1.6-(this.wave-1)*0.17);},
   _typeWeights(wave){
-    // [Jello, Brute, Speeder, Crusher, Splitter, Phantom, Witch, Tomato, Slug, Disco, Pepper]
-    if(wave<=1)return[80,0,10,0,0,0,0,10,0,0,0];
-    if(wave===2)return[55,10,12,0,0,0,5,10,8,0,0];
-    if(wave===3)return[40,15,12,0,5,0,8,10,5,5,0];
-    if(wave===4)return[35,15,12,5,5,0,10,8,5,5,0];
-    if(wave===5)return[25,12,12,7,7,0,10,8,8,6,5];
-    if(wave===6)return[22,12,11,8,7,4,10,8,7,6,5];
-    if(wave===7)return[20,11,11,9,8,5,10,7,7,6,6];
-    if(wave<=9)return[18,11,11,10,9,6,10,6,6,6,7];
-    return[15,10,10,11,10,8,10,5,5,8,8];
+    // [Jello, Brute, Speeder, Crusher, Splitter, Phantom, Witch, Tomato, Slug, Disco, Pepper, Exploder, Summoner, Shielder]
+    if(wave<=1)return[80,0,10,0,0,0,0,10,0,0,0,0,0,0];
+    if(wave===2)return[55,10,12,0,0,0,5,10,8,0,0,0,0,0];
+    if(wave===3)return[40,15,12,0,5,0,8,10,5,5,0,0,0,0];
+    if(wave===4)return[35,15,12,5,5,0,10,8,5,5,0,3,0,0];
+    if(wave===5)return[25,12,12,7,7,0,10,8,8,6,5,4,0,0];
+    if(wave===6)return[22,12,11,8,7,4,10,8,7,6,5,5,3,0];
+    if(wave===7)return[18,11,11,9,8,5,10,7,7,6,6,6,4,2];
+    if(wave<=9)return[16,11,11,10,9,6,10,6,6,6,7,7,5,4];
+    if(wave<=15)return[12,9,9,11,10,8,10,5,5,8,8,8,6,5];
+    return[10,8,8,12,11,9,10,4,4,9,9,10,8,8];  // late game: more variety
   },
   _pick(wave){
     const w=this._typeWeights(wave);const total=w.reduce((a,b)=>a+b,0);
     let r=Math.random()*total;
-    const types=[Jello,Brute,Speeder,Crusher,Splitter,Phantom,Witch,Tomato,BananaSlug,DiscoZombie,GhostPepper];
+    const types=[Jello,Brute,Speeder,Crusher,Splitter,Phantom,Witch,Tomato,BananaSlug,DiscoZombie,GhostPepper,Exploder,Summoner,Shielder];
     for(let i=0;i<types.length;i++){r-=w[i];if(r<=0)return types[i];}
     return Jello;
   },
@@ -9978,6 +10190,9 @@ const UI={
         {id:'slug',name:'BANANA SLUG',icon:'🐌',color:'#ffee22',sub:'TRAIL',desc:'Leaves slowing slime trail'},
         {id:'disco',name:'DISCO ZOMBIE',icon:'🕺',color:'#ff44ff',sub:'DASHER',desc:'Dashes toward player'},
         {id:'pepper',name:'GHOST PEPPER',icon:'🌶',color:'#ff8822',sub:'SPICY',desc:'Hot · fast · burns on contact'},
+        {id:'exploder',name:'EXPLODER',icon:'💣',color:'#ff4422',sub:'KAMIKAZE',desc:'Charges fast · explodes in big AoE on death'},
+        {id:'summoner',name:'SUMMONER',icon:'🧙',color:'#aa44ff',sub:'CASTER',desc:'Stationary · summons mini jellos around it'},
+        {id:'shielder',name:'SHIELDER',icon:'🛡',color:'#888899',sub:'ARMORED',desc:'Frontal shield blocks 60% damage · flank to kill'},
       ];
       return list.map(e=>({...e,unlocked:!!Save.data.codexFound?.enemies?.[e.id]||!!Save.data.codexUnlockAll}));
     }
