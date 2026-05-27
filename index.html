@@ -480,7 +480,8 @@ const TouchControls={
   lId:-1,lOrigin:null,lx:0,ly:0,
   rId:-1,rOrigin:null,rx:0,ry:0,rActive:false,rJust:false,
   // Sizes are in virtual canvas units (1920x1080) — comfortable for thumbs on a scaled phone
-  R:150,r:62,E:55,btnR:62,
+  // Bumped slightly per user request (joysticks/buttons easier to hit on phones)
+  R:175,r:72,E:55,btnR:72,
   // Computed positions
   // Move stick: bottom-left
   _lc(){return{x:this.R+this.E,y:canvas.height-this.R-this.E};},
@@ -495,8 +496,10 @@ const TouchControls={
   _fc(){const rl=this._rlc();return{x:rl.x,y:rl.y-this.btnR*2-22};},
   // Fullscreen toggle: top-left, larger hit area
   _fsc(){return{x:60,y:60};},
+  _psc(){return{x:160,y:60};},  // pause button — to the right of FS
   _hit(tx,ty,p){const dx=tx-p.x,dy=ty-p.y,hr=this.btnR+18;return dx*dx+dy*dy<hr*hr;},
   _hitFS(tx,ty){const p=this._fsc(),dx=tx-p.x,dy=ty-p.y;return dx*dx+dy*dy<45*45;},
+  _hitPS(tx,ty){const p=this._psc(),dx=tx-p.x,dy=ty-p.y;return dx*dx+dy*dy<45*45;},
   _showHint:0,
   _toggleFS(){
     const el=document.documentElement;
@@ -530,6 +533,10 @@ const TouchControls={
       const p=_toCanvas(t.clientX,t.clientY);
       // Fullscreen button (always available in any game state)
       if(this._hitFS(p.x,p.y)){this._toggleFS();continue;}
+      // Pause button (only during gameplay)
+      if(typeof Game!=='undefined'&&Game.state==='playing'&&this._hitPS(p.x,p.y)){
+        AudioManager.play('pause');Game.state='paused';continue;
+      }
       // Mobile cheat-bar tap → focus hidden <input> NOW (must be in the same call
       // stack as the touch event so iOS/Android pop up the soft keyboard).
       // Generous hit area since the visual bar is small on a scaled phone screen.
@@ -640,6 +647,17 @@ const TouchControls={
       ctx.fillStyle='#fff';ctx.font='11px monospace';
       ctx.fillText('Tap Share → "Add to Home Screen"',canvas.width/2,98);
       ctx.fillText('then launch from the icon for fullscreen.',canvas.width/2,112);
+    }
+    // Pause button (only during gameplay)
+    if(typeof Game!=='undefined'&&Game.state==='playing'){
+      const ps=this._psc();
+      ctx.globalAlpha=0.55;ctx.fillStyle='rgba(0,0,0,0.55)';
+      ctx.beginPath();ctx.arc(ps.x,ps.y,20,0,Math.PI*2);ctx.fill();
+      ctx.globalAlpha=0.85;ctx.strokeStyle='#ffcc44';ctx.lineWidth=2;ctx.stroke();
+      // Pause bars
+      ctx.globalAlpha=0.95;ctx.fillStyle='#ffcc44';
+      ctx.fillRect(ps.x-6,ps.y-7,4,14);
+      ctx.fillRect(ps.x+2,ps.y-7,4,14);
     }
     // Joysticks + ability buttons only in playing state
     if(typeof Game==='undefined'||Game.state!=='playing'){ctx.restore();return;}
@@ -1729,8 +1747,9 @@ const CarePackages={
   list:[],
   spawnTimer:35,
   // Only MYTHIC care weapons (all entries below are mythic now)
-  // 'kraber' and 'chicken' removed from spawn pool per user request
-  TYPES:['lstar','eva8','mastiff','devotion','fish','bees','dice','blackhole'],
+  // 'kraber', 'chicken', and 'fish' removed from spawn pool per user request.
+  // Now ALSO includes regular legendary weapons (rolled from WEAPON_DEFS at spawn time).
+  TYPES:['lstar','eva8','mastiff','devotion','bees','dice','blackhole','katana','banana','portalgun','blackholegun','timegun'],
   spawn(){
     let x,y,tries=0;
     do{x=300+Math.random()*(ARENA-600);y=300+Math.random()*(ARENA-600);tries++;}
@@ -4265,10 +4284,10 @@ let _eid=1000;
 function _waveDifficulty(wave){
   const w=Math.max(1,wave||1);
   return {
-    // Steeper scaling per user request — game gets brutally hard fast
-    hp:    1 + (w-1)*0.09 + Math.max(0,w-10)*0.06 + Math.max(0,w-20)*0.08 + Math.max(0,w-30)*0.10,
-    dmg:   1 + (w-1)*0.07 + Math.max(0,w-10)*0.05 + Math.max(0,w-25)*0.08,
-    speed: 1 + (w-1)*0.018 + Math.max(0,w-15)*0.015
+    // Brutal scaling — enemies get tanky and hit hard fast
+    hp:    1 + (w-1)*0.12 + Math.max(0,w-10)*0.08 + Math.max(0,w-20)*0.10 + Math.max(0,w-30)*0.14,
+    dmg:   1 + (w-1)*0.09 + Math.max(0,w-10)*0.07 + Math.max(0,w-25)*0.10,
+    speed: 1 + (w-1)*0.022 + Math.max(0,w-15)*0.018
   };
 }
 class BaseEnemy{
@@ -4844,7 +4863,8 @@ class GhostPepper extends BaseEnemy{
 class Boss extends BaseEnemy{
   constructor(x,y,wave=10){
     const tier=Math.max(1,Math.floor(wave/10));
-    super(x,y,{kind:'boss',r:48,hp:850+tier*500,speed:55+tier*7,contactDmg:32+tier*7,contactInterval:0.65,color:'#cc0066',xpDrop:25+tier*5,wobSpd:1.2});
+    // Boss +100% HP per user request — was 850+tier*500, now 1700+tier*1000
+    super(x,y,{kind:'boss',r:48,hp:1700+tier*1000,speed:60+tier*8,contactDmg:48+tier*10,contactInterval:0.6,color:'#cc0066',xpDrop:25+tier*5,wobSpd:1.2});
     this.tier=tier;this.attackT=3;this.dashT=8;this.projT=5;this.maxHp=this.hp;
   }
   update(dt,player,target){
@@ -6328,7 +6348,9 @@ class Player{
     UI.announce(this.careWeapon?'+AMMO (DEFAULT WEAPON)':'+AMMO',1.0,'#ffaa33');
   }
   pickupCarePackage(type){
-    const def=CARE_WEAPON_DEFS[type];
+    // Care package weapons can be CARE-PKG-only or legendary main weapons
+    const def=CARE_WEAPON_DEFS[type]||WEAPON_DEFS[type];
+    if(!def){return;}
     // care weapons = SINGLE MAGAZINE - no reserve, disappears when empty
     this.careWeapon={...def,ammo:0,mag:def.magSize,type,maxAmmo:0};
     this.reloading=false;this.reloadT=0;
@@ -8420,6 +8442,64 @@ const UI={
   },
   update(dt){this._killFeed.forEach(k=>k.t-=dt);this._killFeed=this._killFeed.filter(k=>k.t>0);if(this._announce){this._announce.t-=dt;if(this._announce.t<=0)this._announce=null;}},
   announce(text,dur=2.5,color='#44ffff'){this._announce={text,t:dur,maxT:dur,color};},
+  // ── TOP-CENTER WAVE BANNER ──────────────────────────────────
+  // Shows current wave + countdown to next, with extra warning before boss waves.
+  _drawWaveBanner(wave){
+    const t=(typeof Spawner!=='undefined'?Math.max(0,Spawner.waveTimer):0);
+    const bossWave=(wave%10===0);
+    const nextIsBoss=((wave+1)%10===0);
+    const bossActive=(typeof Spawner!=='undefined'&&Spawner.bossWaveActive);
+    const w=240,h=58,cx=canvas.width/2,cy=14;
+    const x=cx-w/2,y=cy;
+    // Pulsing color: pink during boss wave, red if next is boss imminent, cyan otherwise
+    let col=bossActive?'#ff44aa':(nextIsBoss&&t<8?'#ff6644':'#44ffff');
+    const pulse=0.5+0.5*Math.sin(performance.now()/350);
+    // Drop shadow
+    ctx.fillStyle='rgba(0,0,0,0.55)';
+    ctx.beginPath();ctx.roundRect(x+2,y+4,w,h,10);ctx.fill();
+    // Body gradient
+    const bg=ctx.createLinearGradient(0,y,0,y+h);
+    bg.addColorStop(0,'rgba(28,32,58,0.92)');
+    bg.addColorStop(1,'rgba(8,10,22,0.92)');
+    ctx.fillStyle=bg;
+    ctx.beginPath();ctx.roundRect(x,y,w,h,10);ctx.fill();
+    // Border (color tinted)
+    ctx.strokeStyle=col;ctx.lineWidth=bossActive?2.5:1.5;
+    ctx.shadowColor=col;ctx.shadowBlur=bossActive?14+pulse*8:6;
+    ctx.beginPath();ctx.roundRect(x,y,w,h,10);ctx.stroke();
+    ctx.shadowBlur=0;
+    // Top sheen
+    const sh=ctx.createLinearGradient(0,y,0,y+10);
+    sh.addColorStop(0,'rgba(255,255,255,0.18)');sh.addColorStop(1,'rgba(255,255,255,0)');
+    ctx.fillStyle=sh;ctx.beginPath();ctx.roundRect(x+2,y+1,w-4,9,8);ctx.fill();
+    // WAVE label + number (left half)
+    ctx.fillStyle='rgba(180,210,255,0.75)';ctx.font='bold 10px monospace';ctx.textAlign='center';
+    ctx.fillText('WAVE',x+w*0.25,y+18);
+    ctx.fillStyle=col;ctx.font='bold 28px monospace';
+    ctx.shadowColor=col;ctx.shadowBlur=bossActive?12:6;
+    ctx.fillText(`${wave}`,x+w*0.25,y+44);
+    ctx.shadowBlur=0;
+    // Divider
+    ctx.strokeStyle='rgba(255,255,255,0.12)';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(cx,y+10);ctx.lineTo(cx,y+h-10);ctx.stroke();
+    // TIMER (right half)
+    if(bossActive){
+      ctx.fillStyle='#ff44aa';ctx.font='bold 10px monospace';ctx.textAlign='center';
+      ctx.fillText('BOSS FIGHT',x+w*0.75,y+18);
+      ctx.shadowColor='#ff44aa';ctx.shadowBlur=10;
+      ctx.font='bold 24px monospace';ctx.fillText('☠',x+w*0.75,y+44);
+      ctx.shadowBlur=0;
+    } else {
+      ctx.fillStyle='rgba(180,210,255,0.75)';ctx.font='bold 10px monospace';ctx.textAlign='center';
+      ctx.fillText(nextIsBoss?'BOSS IN':'NEXT IN',x+w*0.75,y+18);
+      const tCol=nextIsBoss&&t<8?'#ff6644':(t<5?'#ffaa44':'#ffffff');
+      ctx.fillStyle=tCol;ctx.font='bold 28px monospace';
+      if(t<5){ctx.shadowColor=tCol;ctx.shadowBlur=8+pulse*4;}
+      ctx.fillText(`${Math.ceil(t)}s`,x+w*0.75,y+44);
+      ctx.shadowBlur=0;
+    }
+    ctx.textAlign='left';
+  },
   panel(x,y,w,h,r=8,fillA=0.78){
     // Drop shadow (soft, offset down/right)
     ctx.fillStyle='rgba(0,0,0,0.45)';
@@ -8769,6 +8849,8 @@ const UI={
 
   // ── HUD DURING GAME ──
   drawHUD(player,wave){
+    // ── TOP CENTER: WAVE + TIMER ──
+    this._drawWaveBanner(wave);
     // ── player panel (top left)
     const px=14,py=14;
     const hasUlt=!!player.apexUlt;
