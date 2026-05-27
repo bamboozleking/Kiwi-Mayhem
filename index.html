@@ -52,7 +52,7 @@
 const canvas=document.getElementById('gameCanvas');
 const ctx=canvas.getContext('2d');
 // Bump this on every release — shown in main menu so users can confirm they've got the latest
-const GAME_VERSION='v2.4';
+const GAME_VERSION='v2.5';
 // Virtual design resolution — game UI was authored for ~1920x1080.
 // We render at this fixed internal size and CSS-scale the canvas to fit
 // the device viewport, so the layout is identical on phone and desktop.
@@ -2285,9 +2285,80 @@ const CHAR_DEFS={
       c.fillStyle=fl?'#eee':'#881133';c.fillRect(sx-P_R*0.06,sy-P_R*0.52,P_R*0.12,4);
       c.fillStyle=fl?'#fff':'#fff';c.beginPath();c.arc(sx-P_R*0.09,sy-P_R*0.62,2,0,Math.PI*2);c.fill();c.beginPath();c.arc(sx+P_R*0.09,sy-P_R*0.62,2,0,Math.PI*2);c.fill();
     }},
+  // ── ONE PIECE ──
+  luffy:{name:'LUFFY',rarity:'legendary',color:'#dd3322',accent:'#ffdd44',hp:120,speed:228,
+    desc:'Gum-Gum rubber pirate. Stretches and snaps back.',passive:'+15% melee/explosive damage · 1 HP regen every 3s',
+    qName:'GUM-GUM PISTOL',qDesc:'Stretch punch · 50 dmg · pierces · CD 8s',
+    detail:(c,sx,sy,a,fl)=>{
+      // Yellow straw hat with red ribbon — on top of head
+      c.fillStyle=fl?'#fff':'#ffdd44';c.shadowColor=fl?'#fff':'#ddaa00';c.shadowBlur=fl?0:6;
+      c.beginPath();c.ellipse(sx,sy-P_R*0.95,P_R*0.55,P_R*0.12,0,0,Math.PI*2);c.fill();
+      c.shadowBlur=0;
+      c.fillStyle=fl?'#fff':'#ffcc22';
+      c.beginPath();c.arc(sx,sy-P_R*1.0,P_R*0.30,Math.PI,Math.PI*2);c.fill();
+      // Red ribbon around the hat
+      c.fillStyle=fl?'#fff':'#cc0000';c.fillRect(sx-P_R*0.30,sy-P_R*0.92,P_R*0.60,3);
+      // Iconic scar under left eye
+      c.fillStyle=fl?'#fff':'#aa2200';
+      c.beginPath();c.moveTo(sx-P_R*0.20,sy-P_R*0.45);c.lineTo(sx-P_R*0.20,sy-P_R*0.32);c.lineTo(sx-P_R*0.16,sy-P_R*0.40);c.closePath();c.fill();
+      // Red vest button center
+      c.fillStyle=fl?'#fff':'#ffaa22';c.shadowColor='#ffaa22';c.shadowBlur=fl?0:6;
+      c.beginPath();c.arc(sx,sy-P_R*0.05,P_R*0.06,0,Math.PI*2);c.fill();c.shadowBlur=0;
+    }},
+  // ── ATTACK ON TITAN — LEVI ──
+  levi:{name:'LEVI ACKERMAN',rarity:'legendary',color:'#3a3a3a',accent:'#ffffff',hp:95,speed:255,
+    desc:'Humanity\'s strongest. ODM-gear spin attacks.',passive:'+25% crit dmg · brief invuln on dodge dash',
+    qName:'ODM SPIN',qDesc:'Dash + arc slash · 60 dmg cone · CD 7s',
+    detail:(c,sx,sy,a,fl)=>{
+      // Black hair (undercut, parted)
+      c.fillStyle=fl?'#fff':'#0a0a0a';
+      c.beginPath();c.ellipse(sx,sy-P_R*0.92,P_R*0.40,P_R*0.14,0,0,Math.PI*2);c.fill();
+      c.fillStyle=fl?'#fff':'#1a1a1a';
+      c.fillRect(sx-P_R*0.36,sy-P_R*0.88,P_R*0.72,P_R*0.14);
+      // White cravat (signature)
+      c.fillStyle=fl?'#fff':'#ffffff';c.shadowColor='#ffffff';c.shadowBlur=fl?0:4;
+      c.beginPath();
+      c.moveTo(sx-P_R*0.12,sy-R*0.4);
+      c.lineTo(sx-P_R*0.20,sy-P_R*0.15);
+      c.lineTo(sx,sy-P_R*0.05);
+      c.lineTo(sx+P_R*0.20,sy-P_R*0.15);
+      c.lineTo(sx+P_R*0.12,sy-P_R*0.4);
+      c.closePath();c.fill();c.shadowBlur=0;
+      // ODM gear cables on hips (small grey lines)
+      c.strokeStyle=fl?'#fff':'#888888';c.lineWidth=1.5;
+      c.beginPath();c.moveTo(sx-P_R*0.4,sy+P_R*0.1);c.lineTo(sx-P_R*0.5,sy+P_R*0.3);c.stroke();
+      c.beginPath();c.moveTo(sx+P_R*0.4,sy+P_R*0.1);c.lineTo(sx+P_R*0.5,sy+P_R*0.3);c.stroke();
+    }},
+  // ── ATTACK ON TITAN — EREN ──
+  eren:{name:'EREN YEAGER',rarity:'legendary',color:'#7a4a22',accent:'#aaccaa',hp:135,speed:210,
+    desc:'Founding Titan. Tank build with explosive ult.',passive:'+20% max HP · regen 2 HP/s under 50% HP',
+    qName:'TITAN SHIFT',qDesc:'Buff +40% dmg, +25% resist 4s · CD 11s',
+    detail:(c,sx,sy,a,fl)=>{
+      // Brown swept hair
+      c.fillStyle=fl?'#fff':'#3a2008';
+      c.beginPath();c.ellipse(sx,sy-P_R*0.92,P_R*0.40,P_R*0.13,0,0,Math.PI*2);c.fill();
+      c.fillStyle=fl?'#fff':'#4a2810';
+      c.fillRect(sx-P_R*0.36,sy-P_R*0.88,P_R*0.72,P_R*0.10);
+      // Survey Corps wings emblem on chest (small green wing shapes)
+      c.fillStyle=fl?'#fff':'#aaccaa';c.shadowColor='#88aa88';c.shadowBlur=fl?0:5;
+      c.beginPath();
+      c.moveTo(sx-P_R*0.06,sy-P_R*0.08);
+      c.quadraticCurveTo(sx-P_R*0.20,sy-P_R*0.18,sx-P_R*0.22,sy-P_R*0.05);
+      c.quadraticCurveTo(sx-P_R*0.18,sy-P_R*0.02,sx-P_R*0.06,sy-P_R*0.04);
+      c.closePath();c.fill();
+      c.beginPath();
+      c.moveTo(sx+P_R*0.06,sy-P_R*0.08);
+      c.quadraticCurveTo(sx+P_R*0.20,sy-P_R*0.18,sx+P_R*0.22,sy-P_R*0.05);
+      c.quadraticCurveTo(sx+P_R*0.18,sy-P_R*0.02,sx+P_R*0.06,sy-P_R*0.04);
+      c.closePath();c.fill();c.shadowBlur=0;
+      // Intense green-glow eyes
+      c.fillStyle=fl?'#fff':'#88ff66';c.shadowColor='#88ff66';c.shadowBlur=fl?0:8;
+      c.beginPath();c.arc(sx-P_R*0.16,sy-P_R*0.52,2.2,0,Math.PI*2);c.fill();
+      c.beginPath();c.arc(sx+P_R*0.16,sy-P_R*0.52,2.2,0,Math.PI*2);c.fill();c.shadowBlur=0;
+    }},
 };
 const RARITY_ORDER={common:0,rare:1,epic:2,legendary:3,mythic:4};
-const CHAR_ORDER=['octane','bangalore','mirage','pathfinder','caustic','loba','moonknight','wraith','fuse','spiderman','hollowknight','revenant','felix','victor','mrbean','pinkpanther','rickgrimes','ben10','negan','ricksanchez','gojo','fushiguro','choso']
+const CHAR_ORDER=['octane','bangalore','mirage','pathfinder','caustic','loba','moonknight','wraith','fuse','spiderman','hollowknight','revenant','felix','victor','mrbean','pinkpanther','rickgrimes','ben10','negan','ricksanchez','gojo','fushiguro','choso','luffy','levi','eren']
   .sort((a,b)=>RARITY_ORDER[CHAR_DEFS[a].rarity||'common']-RARITY_ORDER[CHAR_DEFS[b].rarity||'common']);
 
 // ─── WEAPONS ───────────────────────────────────────────────────
@@ -2531,6 +2602,15 @@ const ULT_DEFS={
   choso:{name:'BLOOD SHOWER',color:'#cc2244',cd:60,
     desc:'15 blood projectiles in all directions · 30 dmg each',
     activate(p){UI.announce('🩸 BLOOD SHOWER 🩸',3,'#cc2244');for(let i=0;i<15;i++){setTimeout(()=>{if(Game.state!=='playing')return;const a=Math.PI*2*i/15;Bullets.fire(p.x,p.y,a,p.id,'#cc2244',30,{pierce:99,weaponSize:1.8,weaponSpeed:0.9,trail:0.8});Particles.burst(p.x,p.y,5,{color:'#cc2244',speed:80,life:0.3,r:3});},i*50);}Particles.burst(p.x,p.y,32,{color:'#cc2244',speed:200,life:0.9,r:6});Camera.shake(7,0.4);}},
+  luffy:{name:'GEAR 5',color:'#ffdd44',cd:55,
+    desc:'8s of 2× damage, +60% speed, immunity. Bouncy!',
+    activate(p){UI.announce('☀ GEAR 5 ☀',3.5,'#ffdd44');p.ultDmgBoost=8;p.ultBoostT=8;p.ultInvT=8;p.dmgMult=(p.dmgMult||1)*2;p.speedMult=(p.speedMult||1)*1.6;setTimeout(()=>{if(p&&p.alive){p.dmgMult=(p.dmgMult||2)/2;p.speedMult=(p.speedMult||1.6)/1.6;}},8000);Particles.burst(p.x,p.y,50,{color:'#ffdd44',speed:240,life:1.0,r:7});Particles.burst(p.x,p.y,28,{color:'#ffffff',speed:160,life:0.6,r:4});Camera.shake(10,0.6);}},
+  levi:{name:'BLADE FRENZY',color:'#ffffff',cd:50,
+    desc:'8 lightning-fast slashes around you · 60 dmg each',
+    activate(p){UI.announce('⚔ BLADE FRENZY ⚔',3,'#ffffff');for(let i=0;i<8;i++){setTimeout(()=>{if(Game.state!=='playing'||!p.alive)return;const a=Math.PI*2*i/8;const tx=p.x+Math.cos(a)*120,ty=p.y+Math.sin(a)*120;for(const e of Game.enemies){if(!e.alive)continue;const dx=e.x-tx,dy=e.y-ty;if(dx*dx+dy*dy<70*70){e.takeDamage(60);if(e.applyStun)e.applyStun(0.3);Particles.burst(e.x,e.y,8,{color:'#ffffff',speed:160,life:0.4,r:3});}}Effects.add({x:tx,y:ty,life:0.25,maxLife:0.25,_a:a,draw(){const sx=Camera.sx(this.x),sy=Camera.sy(this.y),f=this.life/this.maxLife;ctx.save();ctx.translate(sx,sy);ctx.rotate(this._a);ctx.globalAlpha=f;ctx.strokeStyle='#ffffff';ctx.lineWidth=4;ctx.shadowColor='#ffffff';ctx.shadowBlur=18;ctx.beginPath();ctx.moveTo(-50,0);ctx.lineTo(50,0);ctx.stroke();ctx.restore();ctx.shadowBlur=0;ctx.globalAlpha=1;}});},i*100);}Camera.shake(6,0.4);}},
+  eren:{name:'FOUNDING TITAN ROAR',color:'#aaccaa',cd:65,
+    desc:'Massive AoE roar · 200 dmg · stuns all enemies r 400',
+    activate(p){UI.announce('🦣 FOUNDING TITAN ROAR 🦣',4,'#aaccaa');const R=400;for(const e of Game.enemies){if(!e.alive)continue;const dx=e.x-p.x,dy=e.y-p.y;if(dx*dx+dy*dy<R*R){e.takeDamage(200);if(e.applyStun)e.applyStun(3);}}Particles.burst(p.x,p.y,60,{color:'#88aa88',speed:300,life:1.2,r:8});Particles.burst(p.x,p.y,32,{color:'#ffffff',speed:200,life:0.6,r:5});Effects.add({x:p.x,y:p.y,owner:p,r:R,life:1,maxLife:1,draw(){const sx=Camera.sx(this.owner.x),sy=Camera.sy(this.owner.y),f=1-this.life/this.maxLife;ctx.save();ctx.globalCompositeOperation='lighter';ctx.globalAlpha=(1-f)*0.7;const rg=ctx.createRadialGradient(sx,sy,30,sx,sy,this.r*f);rg.addColorStop(0,'rgba(170,204,170,0.9)');rg.addColorStop(0.5,'rgba(140,180,140,0.5)');rg.addColorStop(1,'rgba(60,90,60,0)');ctx.fillStyle=rg;ctx.beginPath();ctx.arc(sx,sy,this.r*f,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#aaccaa';ctx.lineWidth=6;ctx.shadowColor='#aaccaa';ctx.shadowBlur=25;ctx.beginPath();ctx.arc(sx,sy,this.r*f,0,Math.PI*2);ctx.stroke();ctx.restore();ctx.shadowBlur=0;ctx.globalAlpha=1;}});Camera.shake(14,0.8);}},
 };
 
 // ─── PROGRESSION / SAVE ─────────────────────────────────────────
@@ -2558,7 +2638,8 @@ const Save={
     if(typeof this.data.lastDailyBonus!=='number')this.data.lastDailyBonus=0;
   },
   save(){try{localStorage.setItem('apex_arena_save',JSON.stringify(this.data));}catch(e){}},
-  addKiwis(n){this._frac=(this._frac||0)+n*1.05;const w=Math.floor(this._frac);this._frac-=w;this.data.kiwis+=w;this.save();},
+  // +30% kiwi gain per user request (was 1.05, now 1.365)
+  addKiwis(n){this._frac=(this._frac||0)+n*1.365;const w=Math.floor(this._frac);this._frac-=w;this.data.kiwis+=w;this.save();},
   addBirds(n){this.data.birds+=n;this.save();},
   addFeather(n=1){
     this.data.feathers=(this.data.feathers||0)+n;
@@ -7251,10 +7332,18 @@ class Player{
     // Care package weapons can be CARE-PKG-only or legendary main weapons
     const def=CARE_WEAPON_DEFS[type]||WEAPON_DEFS[type];
     if(!def){return;}
+    // Care-package legendaries get a limited "magazine" so they aren't permanent.
+    // Katana especially: its main-weapon magSize is 9999 (infinite). Cap it.
+    let mag=def.magSize;
+    if(type==='katana'||def.melee)mag=50;       // 50 sword swings
+    else if(type==='banana')mag=24;             // 24 boomerangs
+    else if(type==='portalgun')mag=36;          // 36 portal shots
+    else if(type==='blackholegun')mag=12;       // 12 black holes
+    else if(type==='timegun')mag=44;            // 44 freeze shots
     // care weapons = SINGLE MAGAZINE - no reserve, disappears when empty
-    this.careWeapon={...def,ammo:0,mag:def.magSize,type,maxAmmo:0};
+    this.careWeapon={...def,ammo:0,mag,magSize:mag,type,maxAmmo:0};
     this.reloading=false;this.reloadT=0;
-    UI.announce(`${def.name} ACQUIRED`,2.5,'#ffdd00');
+    UI.announce(`${def.name} ACQUIRED · ${mag} uses`,2.5,'#ffdd00');
   }
   collectXp(v=1){
     this.xp+=v+(this.xpBonus??0);
@@ -8171,6 +8260,104 @@ class Player{
         Particles.burst(this.x,this.y,12,{color:'#fff',speed:120,life:0.4,r:3});
         Camera.shake(6,0.3);AudioManager.play('explosion');
         break;}
+      case 'luffy':{
+        this.qCD=8*cdMult;
+        // GUM-GUM PISTOL — stretching punch in a line. Hits enemies along a 400px line.
+        const ang=this.aimAngle,maxLen=400;
+        let hitCount=0;
+        for(const e of Game.enemies){
+          if(!e.alive)continue;
+          // Distance along the punch direction
+          const dx=e.x-this.x,dy=e.y-this.y;
+          const along=dx*Math.cos(ang)+dy*Math.sin(ang);
+          const perp=Math.abs(dx*-Math.sin(ang)+dy*Math.cos(ang));
+          if(along>0&&along<maxLen&&perp<50){
+            e.takeDamage(50);if(e.applyStun)e.applyStun(0.5);
+            Particles.burst(e.x,e.y,8,{color:'#ffdd44',speed:180,life:0.4,r:4});
+            hitCount++;
+          }
+        }
+        // Visual: stretching arm/fist effect
+        const fx=this.x,fy=this.y;
+        Effects.add({x:fx,y:fy,ang,life:0.35,maxLife:0.35,
+          draw(){const sx=Camera.sx(fx),sy=Camera.sy(fy),f=1-this.life/this.maxLife;
+            ctx.save();ctx.translate(sx,sy);ctx.rotate(this.ang);
+            // arm trail (yellow stretchy line)
+            const len=maxLen*Math.min(1,f*1.5);
+            ctx.strokeStyle='#ffdd44';ctx.lineWidth=14*(1-f*0.5);ctx.lineCap='round';
+            ctx.shadowColor='#ffaa00';ctx.shadowBlur=20;
+            ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(len,0);ctx.stroke();
+            // fist at the end
+            ctx.fillStyle='#ffdd44';
+            ctx.beginPath();ctx.arc(len,0,16,0,Math.PI*2);ctx.fill();
+            ctx.fillStyle='#ffffff';
+            ctx.beginPath();ctx.arc(len-4,-4,5,0,Math.PI*2);ctx.fill();
+            ctx.restore();ctx.shadowBlur=0;}});
+        Particles.burst(this.x,this.y,20,{color:'#ffdd44',speed:180,life:0.5,r:4});
+        Camera.shake(4,0.25);AudioManager.play('explosion');
+        break;}
+      case 'levi':{
+        this.qCD=7*cdMult;
+        // ODM SPIN — dash forward 180px + slash 60-degree cone for 60 dmg
+        const ang=this.aimAngle;
+        const dashDist=180;
+        const tx=this.x+Math.cos(ang)*dashDist,ty=this.y+Math.sin(ang)*dashDist;
+        const c=clampPoly(tx,ty,PHYS_R);
+        this.x=c.x;this.y=c.y;
+        // Slash cone — damage enemies in 60° arc forward up to 150px
+        for(const e of Game.enemies){
+          if(!e.alive)continue;
+          const dx=e.x-this.x,dy=e.y-this.y;
+          const d=Math.sqrt(dx*dx+dy*dy);
+          if(d>150)continue;
+          const ea=Math.atan2(dy,dx);
+          let diff=ea-ang;while(diff>Math.PI)diff-=Math.PI*2;while(diff<-Math.PI)diff+=Math.PI*2;
+          if(Math.abs(diff)<Math.PI/3){
+            e.takeDamage(60);
+            Particles.burst(e.x,e.y,10,{color:'#ffffff',speed:180,life:0.4,r:4});
+          }
+        }
+        // Brief invuln window during dash
+        this.ultInvT=Math.max(this.ultInvT||0,0.3);
+        // Visual slash
+        Effects.add({x:this.x,y:this.y,ang,life:0.3,maxLife:0.3,
+          draw(){const sx=Camera.sx(this.x),sy=Camera.sy(this.y),f=this.life/this.maxLife;
+            ctx.save();ctx.translate(sx,sy);ctx.rotate(this.ang);
+            ctx.globalAlpha=f;ctx.strokeStyle='#ffffff';ctx.lineWidth=4;ctx.lineCap='round';
+            ctx.shadowColor='#ffffff';ctx.shadowBlur=20;
+            // arc slash
+            ctx.beginPath();ctx.arc(0,0,140,-Math.PI/3,Math.PI/3);ctx.stroke();
+            ctx.restore();ctx.shadowBlur=0;ctx.globalAlpha=1;}});
+        Particles.burst(this.x,this.y,18,{color:'#ffffff',speed:160,life:0.4,r:3});
+        Camera.shake(3,0.2);AudioManager.play('kill');
+        break;}
+      case 'eren':{
+        this.qCD=11*cdMult;
+        // TITAN SHIFT — 4s buff: +40% damage, +25% resist, brief invuln on activation
+        this.qActive=true;this.qDur=4;
+        this.dmgMult=(this.dmgMult||1)*1.4;
+        this.damageResist=(this.damageResist||0)+0.25;
+        this.ultInvT=Math.max(this.ultInvT||0,0.5);
+        // Restore after duration
+        setTimeout(()=>{
+          if(this&&this.alive){
+            this.dmgMult=(this.dmgMult||1.4)/1.4;
+            this.damageResist=Math.max(0,(this.damageResist||0.25)-0.25);
+          }
+        },4000);
+        // Shockwave + steam burst
+        Effects.add({x:this.x,y:this.y,owner:this,r:0,life:0.5,maxLife:0.5,
+          draw(){const sx=Camera.sx(this.owner.x),sy=Camera.sy(this.owner.y),f=1-this.life/this.maxLife;
+            ctx.save();ctx.globalCompositeOperation='lighter';
+            ctx.globalAlpha=(1-f)*0.8;ctx.strokeStyle='#aaccaa';ctx.lineWidth=5;ctx.shadowColor='#aaccaa';ctx.shadowBlur=20;
+            ctx.beginPath();ctx.arc(sx,sy,90*f,0,Math.PI*2);ctx.stroke();
+            ctx.lineWidth=2;ctx.strokeStyle='#ffffff';
+            ctx.beginPath();ctx.arc(sx,sy,90*f*0.7,0,Math.PI*2);ctx.stroke();
+            ctx.restore();ctx.shadowBlur=0;ctx.globalAlpha=1;}});
+        Particles.burst(this.x,this.y,32,{color:'#aaccaa',speed:200,life:0.7,r:5});
+        Particles.burst(this.x,this.y,16,{color:'#ffffff',speed:120,life:0.4,r:3});
+        Camera.shake(5,0.3);AudioManager.play('ult_ready');
+        break;}
     }
     VoiceManager.play(this.charId,'spawn');
   }
@@ -8265,6 +8452,11 @@ class Player{
       Camera.shake(isCritSwing?7:3,0.1);
       AudioManager.play(isLucille?'shoot_lucille':'shoot_katana');
       this._recoilT=0.6;
+      // CARE-PACKAGE MELEE: decrement mag so it eventually runs out
+      if(usingCare){
+        w.mag--;
+        if(w.mag<=0){UI.announce(`${w.name} EMPTY`,1.5,'#ff4444');this.careWeapon=null;}
+      }
       return;
     }
     if(w.mag<=0){
