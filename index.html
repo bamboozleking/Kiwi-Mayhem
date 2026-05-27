@@ -3358,6 +3358,87 @@ const UPGRADES=[
   {id:'sigil_death',name:'SIGIL OF DEATH',icon:'⚝',color:'#aa00ff',maxStacks:6,rarity:_RA.m,
     desc:s=>`Ground rune every 4s · 100 dmg · stuns 1.5s · r ${100+s*20}`,
     apply:p=>{p.vsAbilities=p.vsAbilities||{};p.vsAbilities.sigil_death=(p.vsAbilities.sigil_death||0)+1;}},
+
+  // ════ SURVIVOR.IO INSPIRED (20 NEW) ════════════════════════════
+  {id:'drone_buddy',name:'DRONE BUDDY',icon:'🛸',color:'#88ccff',maxStacks:6,rarity:_RA.e,
+    desc:s=>`Companion drone fires ${(0.9-s*0.08).toFixed(1)}s · ${22+s*6} dmg`,
+    apply:p=>{p.vsAbilities=p.vsAbilities||{};p.vsAbilities.drone_buddy=(p.vsAbilities.drone_buddy||0)+1;}},
+
+  {id:'molotov',name:'MOLOTOV',icon:'🍾',color:'#ff6622',maxStacks:6,rarity:_RA.r,
+    desc:s=>`Throw ${s} flask${s>1?'s':''} every 4s · burn pool 3s · ${8+s*2} dmg/tick`,
+    apply:p=>{p.vsAbilities=p.vsAbilities||{};p.vsAbilities.molotov=(p.vsAbilities.molotov||0)+1;}},
+
+  {id:'shuriken_burst',name:'SHURIKEN BURST',icon:'✴',color:'#cccccc',maxStacks:6,rarity:_RA.r,
+    desc:s=>`${4+s*2} shurikens fly outward / 2.6s · ${18+s*3} dmg · pierce 2`,
+    apply:p=>{p.vsAbilities=p.vsAbilities||{};p.vsAbilities.shuriken_burst=(p.vsAbilities.shuriken_burst||0)+1;}},
+
+  {id:'durian_bomb',name:'DURIAN BOMB',icon:'🥥',color:'#aaff44',maxStacks:6,rarity:_RA.e,
+    desc:s=>`Spiky bomb / ${(5.5-s*0.5).toFixed(1)}s · ${60+s*15} dmg · r ${110+s*10}`,
+    apply:p=>{p.vsAbilities=p.vsAbilities||{};p.vsAbilities.durian_bomb=(p.vsAbilities.durian_bomb||0)+1;}},
+
+  {id:'defender_drone',name:'DEFENDER DRONE',icon:'⚙',color:'#88ddff',maxStacks:6,rarity:_RA.e,
+    desc:s=>`${Math.min(6,s+1)} drones orbit close · ${15+s*4} dmg contact`,
+    apply:p=>{p.vsAbilities=p.vsAbilities||{};p.vsAbilities.defender_drone=(p.vsAbilities.defender_drone||0)+1;}},
+
+  {id:'missile_swarm',name:'MISSILE SWARM',icon:'🚀',color:'#ff4422',maxStacks:6,rarity:_RA.l,
+    desc:s=>`${Math.min(6,1+s)} homing missiles / ${(5-s*0.5).toFixed(1)}s · ${50+s*10} dmg blast`,
+    apply:p=>{p.vsAbilities=p.vsAbilities||{};p.vsAbilities.missile_swarm=(p.vsAbilities.missile_swarm||0)+1;}},
+
+  {id:'poison_cloud',name:'POISON CLOUD',icon:'☁',color:'#88ff44',maxStacks:6,rarity:_RA.r,
+    desc:s=>`Toxic aura · ${7+s} dmg/0.5s · r${90+s*16} · 30% slow`,
+    apply:p=>{p.vsAbilities=p.vsAbilities||{};p.vsAbilities.poison_cloud=(p.vsAbilities.poison_cloud||0)+1;}},
+
+  {id:'thunder_hammer',name:'THUNDER HAMMER',icon:'🔨',color:'#ffee44',maxStacks:6,rarity:_RA.e,
+    desc:s=>`Slam every ${(3.2-s*0.3).toFixed(1)}s · ${80+s*15} dmg · r ${140+s*15} · stuns`,
+    apply:p=>{p.vsAbilities=p.vsAbilities||{};p.vsAbilities.thunder_hammer=(p.vsAbilities.thunder_hammer||0)+1;}},
+
+  {id:'reflector',name:'REFLECTOR FIELD',icon:'◈',color:'#44ffff',maxStacks:6,rarity:_RA.e,
+    desc:s=>`Pulse repel every ${(4-s*0.4).toFixed(1)}s · knockback + ${30+s*8} dmg r 130`,
+    apply:p=>{p.vsAbilities=p.vsAbilities||{};p.vsAbilities.reflector=(p.vsAbilities.reflector||0)+1;}},
+
+  {id:'meteor_strike',name:'METEOR STRIKE',icon:'☄',color:'#ff8822',maxStacks:6,rarity:_RA.l,
+    desc:s=>`Sky rock every ${(4.5-s*0.4).toFixed(1)}s · ${120+s*25} dmg · r ${100+s*12}`,
+    apply:p=>{p.vsAbilities=p.vsAbilities||{};p.vsAbilities.meteor_strike=(p.vsAbilities.meteor_strike||0)+1;}},
+
+  {id:'ice_lance',name:'ICE LANCE',icon:'🧊',color:'#88ddff',maxStacks:6,rarity:_RA.r,
+    desc:s=>`Spike every ${(1.3-s*0.12).toFixed(1)}s · ${40+s*8} dmg · freeze 1s`,
+    apply:p=>{p.vsAbilities=p.vsAbilities||{};p.vsAbilities.ice_lance=(p.vsAbilities.ice_lance||0)+1;}},
+
+  {id:'solar_flare',name:'SOLAR FLARE',icon:'☀',color:'#ffdd00',maxStacks:6,rarity:_RA.m,
+    desc:s=>`Mega blast every ${(7-s*0.5).toFixed(1)}s · ${200+s*40} dmg · r ${220+s*20}`,
+    apply:p=>{p.vsAbilities=p.vsAbilities||{};p.vsAbilities.solar_flare=(p.vsAbilities.solar_flare||0)+1;}},
+
+  {id:'blade_storm',name:'BLADE STORM',icon:'⚔',color:'#ddddee',maxStacks:6,rarity:_RA.e,
+    desc:s=>`${3+s} blades whirl r ${70+s*8} · ${25+s*5} dmg`,
+    apply:p=>{p.vsAbilities=p.vsAbilities||{};p.vsAbilities.blade_storm=(p.vsAbilities.blade_storm||0)+1;}},
+
+  {id:'gravity_bomb',name:'GRAVITY BOMB',icon:'⊛',color:'#aa44ff',maxStacks:6,rarity:_RA.l,
+    desc:s=>`Pull-well every ${(8-s*0.7).toFixed(1)}s · ${100+s*20} dmg · pulls r 220`,
+    apply:p=>{p.vsAbilities=p.vsAbilities||{};p.vsAbilities.gravity_bomb=(p.vsAbilities.gravity_bomb||0)+1;}},
+
+  {id:'chain_strike',name:'CHAIN STRIKE',icon:'⚡',color:'#ffcc22',maxStacks:6,rarity:_RA.m,
+    desc:s=>`Kills detonate · ${50+s*15} dmg blast · r${60+s*10}`,
+    apply:p=>{p.vsAbilities=p.vsAbilities||{};p.vsAbilities.chain_strike=(p.vsAbilities.chain_strike||0)+1;}},
+
+  {id:'cryo_burst',name:'CRYO BURST',icon:'❄',color:'#aaeeff',maxStacks:6,rarity:_RA.r,
+    desc:s=>`Freeze burst every ${(5-s*0.4).toFixed(1)}s · r ${110+s*15} · freeze 2s + ${30+s*6} dmg`,
+    apply:p=>{p.vsAbilities=p.vsAbilities||{};p.vsAbilities.cryo_burst=(p.vsAbilities.cryo_burst||0)+1;}},
+
+  {id:'fire_trail',name:'FIRE TRAIL',icon:'🔥',color:'#ff5500',maxStacks:6,rarity:_RA.r,
+    desc:s=>`Burning footsteps · ${8+s*2} dmg/0.5s · lasts ${(1.5+s*0.3).toFixed(1)}s`,
+    apply:p=>{p.vsAbilities=p.vsAbilities||{};p.vsAbilities.fire_trail=(p.vsAbilities.fire_trail||0)+1;}},
+
+  {id:'vampiric_aura',name:'VAMPIRIC AURA',icon:'❤',color:'#cc2244',maxStacks:6,rarity:_RA.l,
+    desc:s=>`Heal ${(s*0.8).toFixed(1)} HP per kill · r ${140+s*20}`,
+    apply:p=>{p.vsAbilities=p.vsAbilities||{};p.vsAbilities.vampiric_aura=(p.vsAbilities.vampiric_aura||0)+1;}},
+
+  {id:'turret_deploy',name:'AUTO TURRET',icon:'⌗',color:'#88ff88',maxStacks:6,rarity:_RA.e,
+    desc:s=>`Deploy turret every ${(12-s).toFixed(0)}s · lasts 6s · ${28+s*5} dmg/shot`,
+    apply:p=>{p.vsAbilities=p.vsAbilities||{};p.vsAbilities.turret_deploy=(p.vsAbilities.turret_deploy||0)+1;}},
+
+  {id:'doomsday',name:'DOOMSDAY DEVICE',icon:'☢',color:'#ff00ff',maxStacks:6,rarity:_RA.m,
+    desc:s=>`Charges 18s, mega blast · ${300+s*60} dmg · r ${280+s*15}`,
+    apply:p=>{p.vsAbilities=p.vsAbilities||{};p.vsAbilities.doomsday=(p.vsAbilities.doomsday||0)+1;}},
 ];
 
 // ─── V/S ABILITY ENGINE ─────────────────────────────────────────
@@ -3707,6 +3788,473 @@ const VSEngine={
             ctx.restore();ctx.shadowBlur=0;ctx.globalAlpha=1;}});
       }
     }
+
+    // ═══════ SURVIVOR.IO STYLE ABILITIES (20 NEW) ═══════════════
+    // Helper: spawn a damaging projectile (simple ballistic, no homing)
+    const _spawnProj=(x,y,vx,vy,dmg,r,life,color,pierce)=>{
+      Bullets.fire(x,y,vx,vy,p.id,dmg,r||5,color,false,1,pierce||0,life||1.2);
+    };
+    // Helper: AoE damage at point
+    const _aoe=(x,y,r,dmg)=>{
+      for(const e of Game.enemies){if(!e.alive)continue;const dx=e.x-x,dy=e.y-y;if(dx*dx+dy*dy<r*r)e.takeDamage(dmg,p.id);}
+    };
+
+    // DRONE BUDDY — auto-fires at nearest enemy
+    if(A.drone_buddy){
+      const lvl=A.drone_buddy,interval=Math.max(0.25,0.9-lvl*0.08),dmg=22+lvl*6;
+      if(!S.droneAng)S.droneAng=0;
+      S.droneAng+=dt*0.6;
+      // Drone position orbits at fixed radius around player
+      const dx=Math.cos(S.droneAng)*P_R*1.6,dy=Math.sin(S.droneAng)*P_R*1.6-P_R*0.8;
+      S.droneX=p.x+dx;S.droneY=p.y+dy;
+      T.drone=(T.drone||0)-dt;
+      if(T.drone<=0){
+        T.drone=interval;
+        const tgt=this._nearest(S.droneX,S.droneY,500);
+        if(tgt){
+          const a=Math.atan2(tgt.y-S.droneY,tgt.x-S.droneX);
+          _spawnProj(S.droneX,S.droneY,Math.cos(a)*620,Math.sin(a)*620,dmg,4,1.4,'#88ccff',1);
+        }
+      }
+      // Draw drone
+      Effects.add({_t:0,life:0.001,maxLife:0.001,draw(){
+        const sx=Camera.sx(S.droneX),sy=Camera.sy(S.droneY);
+        ctx.save();ctx.shadowColor='#88ccff';ctx.shadowBlur=10;
+        ctx.fillStyle='#2a4466';ctx.beginPath();ctx.arc(sx,sy,7,0,Math.PI*2);ctx.fill();
+        ctx.fillStyle='#88ccff';ctx.beginPath();ctx.arc(sx,sy,4,0,Math.PI*2);ctx.fill();
+        ctx.fillStyle='#ffffff';ctx.beginPath();ctx.arc(sx-1,sy-1,1.5,0,Math.PI*2);ctx.fill();
+        ctx.restore();ctx.shadowBlur=0;
+      }});
+    }
+
+    // MOLOTOV — throws flask, leaves burning pool
+    if(A.molotov){
+      const lvl=A.molotov,interval=4,count=lvl,burnDmg=8+lvl*2;
+      T.molo=(T.molo||0)-dt;
+      if(T.molo<=0){
+        T.molo=interval;
+        for(let i=0;i<count;i++){
+          const tgt=this._nearest(p.x,p.y,400);
+          const tx=tgt?tgt.x+(Math.random()-0.5)*120:p.x+(Math.random()-0.5)*250;
+          const ty=tgt?tgt.y+(Math.random()-0.5)*120:p.y+(Math.random()-0.5)*250;
+          Effects.add({x:tx,y:ty,r:70,life:3,maxLife:3,_tick:0,
+            update(d){this._tick+=d;if(this._tick>=0.4){this._tick=0;_aoe(this.x,this.y,this.r,burnDmg);}},
+            draw(){const sx=Camera.sx(this.x),sy=Camera.sy(this.y),f=this.life/this.maxLife;
+              ctx.save();ctx.globalCompositeOperation='lighter';ctx.globalAlpha=f*0.8;
+              ctx.fillStyle='#ff5522';ctx.shadowColor='#ff8822';ctx.shadowBlur=20;
+              ctx.beginPath();ctx.arc(sx,sy,this.r*(0.85+0.15*Math.sin(performance.now()/100)),0,Math.PI*2);ctx.fill();
+              ctx.globalAlpha=f*0.5;ctx.fillStyle='#ffcc22';
+              ctx.beginPath();ctx.arc(sx,sy,this.r*0.6,0,Math.PI*2);ctx.fill();
+              ctx.restore();ctx.shadowBlur=0;ctx.globalAlpha=1;
+            }});
+        }
+      }
+    }
+
+    // SHURIKEN BURST — projectiles outward
+    if(A.shuriken_burst){
+      const lvl=A.shuriken_burst,interval=2.6,count=4+lvl*2,dmg=18+lvl*3;
+      T.shur=(T.shur||0)-dt;
+      if(T.shur<=0){
+        T.shur=interval;
+        for(let i=0;i<count;i++){
+          const a=i/count*Math.PI*2;
+          _spawnProj(p.x,p.y,Math.cos(a)*550,Math.sin(a)*550,dmg,5,1.5,'#dddddd',2);
+        }
+      }
+    }
+
+    // DURIAN BOMB — periodic explosion
+    if(A.durian_bomb){
+      const lvl=A.durian_bomb,interval=Math.max(2,5.5-lvl*0.5),dmg=60+lvl*15,r=110+lvl*10;
+      T.dur=(T.dur||0)-dt;
+      if(T.dur<=0){
+        T.dur=interval;
+        const tgt=this._nearest(p.x,p.y,500);
+        const tx=tgt?tgt.x:p.x+(Math.random()-0.5)*400;
+        const ty=tgt?tgt.y:p.y+(Math.random()-0.5)*400;
+        _aoe(tx,ty,r,dmg);Camera.shake(3,0.2);AudioManager.play('explosion');
+        Effects.add({x:tx,y:ty,r,life:0.55,maxLife:0.55,
+          draw(){const sx=Camera.sx(this.x),sy=Camera.sy(this.y),f=1-this.life/this.maxLife;
+            ctx.save();ctx.globalCompositeOperation='lighter';ctx.globalAlpha=(1-f)*0.85;
+            ctx.fillStyle='#aaff44';ctx.shadowColor='#88ff22';ctx.shadowBlur=30;
+            ctx.beginPath();ctx.arc(sx,sy,this.r*f,0,Math.PI*2);ctx.fill();
+            ctx.globalAlpha=(1-f)*0.5;ctx.fillStyle='#ffffff';
+            ctx.beginPath();ctx.arc(sx,sy,this.r*f*0.5,0,Math.PI*2);ctx.fill();
+            ctx.restore();ctx.shadowBlur=0;ctx.globalAlpha=1;
+          }});
+      }
+    }
+
+    // DEFENDER DRONE — close orbiters that contact-damage
+    if(A.defender_drone){
+      const lvl=A.defender_drone,n=Math.min(6,lvl+1),dmg=15+lvl*4,r=P_R*1.9;
+      if(!S.defAng)S.defAng=0;
+      S.defAng+=dt*2.4;
+      T.def=(T.def||0)-dt;
+      if(T.def<=0){
+        T.def=0.18;
+        for(let i=0;i<n;i++){
+          const a=S.defAng+i/n*Math.PI*2;
+          const dx=p.x+Math.cos(a)*r,dy=p.y+Math.sin(a)*r;
+          for(const e of Game.enemies){if(!e.alive)continue;const ex=e.x-dx,ey=e.y-dy;if(ex*ex+ey*ey<(e.r+10)**2)e.takeDamage(dmg,p.id);}
+        }
+      }
+      Effects.add({_t:0,life:0.001,maxLife:0.001,draw(){
+        for(let i=0;i<n;i++){
+          const a=S.defAng+i/n*Math.PI*2;
+          const dx=Camera.sx(p.x+Math.cos(a)*r),dy=Camera.sy(p.y+Math.sin(a)*r);
+          ctx.save();ctx.shadowColor='#88ddff';ctx.shadowBlur=8;
+          ctx.fillStyle='#446688';ctx.beginPath();ctx.arc(dx,dy,6,0,Math.PI*2);ctx.fill();
+          ctx.fillStyle='#88ddff';ctx.beginPath();ctx.arc(dx,dy,3,0,Math.PI*2);ctx.fill();
+          ctx.restore();ctx.shadowBlur=0;
+        }
+      }});
+    }
+
+    // MISSILE SWARM — homing missiles
+    if(A.missile_swarm){
+      const lvl=A.missile_swarm,interval=Math.max(2,5-lvl*0.5),count=Math.min(6,1+lvl),dmg=50+lvl*10;
+      T.miss=(T.miss||0)-dt;
+      if(T.miss<=0){
+        T.miss=interval;
+        const targets=Game.enemies.filter(e=>e.alive).sort(()=>Math.random()-0.5);
+        for(let i=0;i<count;i++){
+          const tgt=targets[i%Math.max(1,targets.length)];if(!tgt)break;
+          // Spawn a homing missile effect with delay
+          const launchAngle=Math.random()*Math.PI*2;
+          Effects.add({x:p.x+Math.cos(launchAngle)*30,y:p.y+Math.sin(launchAngle)*30,
+            vx:Math.cos(launchAngle)*120,vy:Math.sin(launchAngle)*120-200,
+            tgt,life:1.6,maxLife:1.6,_done:false,
+            update(d){if(this._done)return;
+              if(this.tgt&&this.tgt.alive){
+                const dx=this.tgt.x-this.x,dy=this.tgt.y-this.y,dd=Math.sqrt(dx*dx+dy*dy)||1;
+                const speed=520;
+                this.vx+=(dx/dd*speed-this.vx)*Math.min(1,d*5);
+                this.vy+=(dy/dd*speed-this.vy)*Math.min(1,d*5);
+              }
+              this.x+=this.vx*d;this.y+=this.vy*d;
+              if(this.tgt&&this.tgt.alive){
+                const dx=this.tgt.x-this.x,dy=this.tgt.y-this.y;
+                if(dx*dx+dy*dy<400){this._done=true;_aoe(this.x,this.y,80,dmg);Particles.burst(this.x,this.y,14,{color:'#ff8844',speed:200,life:0.5,r:4});Camera.shake(2,0.15);}
+              }
+            },
+            draw(){if(this._done)return;
+              const sx=Camera.sx(this.x),sy=Camera.sy(this.y);
+              ctx.save();ctx.shadowColor='#ff4422';ctx.shadowBlur=10;
+              ctx.fillStyle='#ff8844';ctx.beginPath();ctx.arc(sx,sy,4,0,Math.PI*2);ctx.fill();
+              ctx.fillStyle='#ffee88';ctx.beginPath();ctx.arc(sx-this.vx*0.01,sy-this.vy*0.01,2,0,Math.PI*2);ctx.fill();
+              ctx.restore();ctx.shadowBlur=0;
+            }});
+        }
+      }
+    }
+
+    // POISON CLOUD — toxic aura, applies slow + damage
+    if(A.poison_cloud){
+      const lvl=A.poison_cloud,r=90+lvl*16,dmg=7+lvl;
+      T.poison=(T.poison||0)-dt;
+      if(T.poison<=0){
+        T.poison=0.5;
+        for(const e of Game.enemies){if(!e.alive)continue;const dx=e.x-p.x,dy=e.y-p.y;if(dx*dx+dy*dy<r*r){e.takeDamage(dmg,p.id);if(e.applySlow)e.applySlow(0.7,1.0);}}
+      }
+      Effects.add({_t:0,life:0.001,maxLife:0.001,draw(){
+        const sx=Camera.sx(p.x),sy=Camera.sy(p.y),t=performance.now()/700;
+        ctx.save();ctx.globalCompositeOperation='lighter';
+        ctx.globalAlpha=0.22+Math.sin(t)*0.05;
+        const rg=ctx.createRadialGradient(sx,sy,r*0.3,sx,sy,r);
+        rg.addColorStop(0,'rgba(140,255,80,0.55)');rg.addColorStop(1,'rgba(80,200,40,0)');
+        ctx.fillStyle=rg;ctx.beginPath();ctx.arc(sx,sy,r,0,Math.PI*2);ctx.fill();
+        ctx.restore();
+      }});
+    }
+
+    // THUNDER HAMMER — periodic AoE slam
+    if(A.thunder_hammer){
+      const lvl=A.thunder_hammer,interval=Math.max(1.5,3.2-lvl*0.3),dmg=80+lvl*15,r=140+lvl*15;
+      T.thunder=(T.thunder||0)-dt;
+      if(T.thunder<=0){
+        T.thunder=interval;
+        const tgt=this._nearest(p.x,p.y,400);
+        const tx=tgt?tgt.x:p.x,ty=tgt?tgt.y:p.y;
+        _aoe(tx,ty,r,dmg);
+        for(const e of Game.enemies){if(!e.alive)continue;const dx=e.x-tx,dy=e.y-ty;if(dx*dx+dy*dy<r*r&&e.applyStun)e.applyStun(1.0);}
+        Camera.shake(4,0.25);AudioManager.play('explosion');
+        Effects.add({x:tx,y:ty,r,life:0.5,maxLife:0.5,
+          draw(){const sx=Camera.sx(this.x),sy=Camera.sy(this.y),f=1-this.life/this.maxLife;
+            ctx.save();ctx.globalCompositeOperation='lighter';ctx.globalAlpha=(1-f)*0.85;
+            ctx.strokeStyle='#ffee44';ctx.lineWidth=6;ctx.shadowColor='#ffee44';ctx.shadowBlur=25;
+            ctx.beginPath();ctx.arc(sx,sy,this.r*f,0,Math.PI*2);ctx.stroke();
+            // lightning bolts
+            ctx.lineWidth=2;
+            for(let i=0;i<8;i++){const a=i/8*Math.PI*2;ctx.beginPath();ctx.moveTo(sx,sy);ctx.lineTo(sx+Math.cos(a)*this.r*f,sy+Math.sin(a)*this.r*f);ctx.stroke();}
+            ctx.restore();ctx.shadowBlur=0;ctx.globalAlpha=1;
+          }});
+      }
+    }
+
+    // REFLECTOR — pulsing knockback / repel
+    if(A.reflector){
+      const lvl=A.reflector,interval=Math.max(2,4-lvl*0.4),dmg=30+lvl*8,r=130;
+      T.refl=(T.refl||0)-dt;
+      if(T.refl<=0){
+        T.refl=interval;
+        for(const e of Game.enemies){if(!e.alive)continue;const dx=e.x-p.x,dy=e.y-p.y,d2=dx*dx+dy*dy;
+          if(d2<r*r){e.takeDamage(dmg,p.id);const d=Math.sqrt(d2)||1;e.x+=dx/d*60;e.y+=dy/d*60;}}
+        Effects.add({x:p.x,y:p.y,r,life:0.4,maxLife:0.4,owner:p,
+          draw(){const sx=Camera.sx(this.owner.x),sy=Camera.sy(this.owner.y),f=1-this.life/this.maxLife;
+            ctx.save();ctx.globalCompositeOperation='lighter';ctx.globalAlpha=(1-f)*0.7;
+            ctx.strokeStyle='#44ffff';ctx.lineWidth=4;ctx.shadowColor='#44ffff';ctx.shadowBlur=20;
+            ctx.beginPath();ctx.arc(sx,sy,this.r*f,0,Math.PI*2);ctx.stroke();
+            ctx.restore();ctx.shadowBlur=0;ctx.globalAlpha=1;
+          }});
+      }
+    }
+
+    // METEOR STRIKE — falls from sky
+    if(A.meteor_strike){
+      const lvl=A.meteor_strike,interval=Math.max(1.8,4.5-lvl*0.4),dmg=120+lvl*25,r=100+lvl*12;
+      T.met=(T.met||0)-dt;
+      if(T.met<=0){
+        T.met=interval;
+        const tgt=this._nearest(p.x,p.y,500);
+        const tx=tgt?tgt.x:p.x+(Math.random()-0.5)*400;
+        const ty=tgt?tgt.y:p.y+(Math.random()-0.5)*400;
+        // Falling rock effect
+        Effects.add({x:tx,y:ty,r,life:0.8,maxLife:0.8,_imp:false,
+          update(d){this.life-=d*0;/* override default decrement */
+            if(!this._imp&&this.life<0.2){this._imp=true;_aoe(this.x,this.y,this.r,dmg);Camera.shake(5,0.35);AudioManager.play('explosion');}
+          },
+          draw(){const sx=Camera.sx(this.x),sy=Camera.sy(this.y),f=this.life/this.maxLife,fall=1-f;
+            ctx.save();
+            if(!this._imp){
+              // shadow marker on ground
+              ctx.globalAlpha=0.6;ctx.strokeStyle='#ff8822';ctx.lineWidth=3;
+              ctx.beginPath();ctx.arc(sx,sy,this.r,0,Math.PI*2);ctx.stroke();
+              // rock streaking down
+              const py=sy-300*f;
+              ctx.fillStyle='#aa4422';ctx.shadowColor='#ff5522';ctx.shadowBlur=22;
+              ctx.beginPath();ctx.arc(sx,py,22,0,Math.PI*2);ctx.fill();
+              ctx.fillStyle='#ffcc44';ctx.beginPath();ctx.arc(sx,py,10,0,Math.PI*2);ctx.fill();
+            } else {
+              ctx.globalCompositeOperation='lighter';ctx.globalAlpha=(this.life/0.2);
+              const rg=ctx.createRadialGradient(sx,sy,10,sx,sy,this.r);
+              rg.addColorStop(0,'#ffeeaa');rg.addColorStop(0.5,'#ff6622');rg.addColorStop(1,'rgba(180,40,0,0)');
+              ctx.fillStyle=rg;ctx.beginPath();ctx.arc(sx,sy,this.r,0,Math.PI*2);ctx.fill();
+            }
+            ctx.restore();ctx.shadowBlur=0;ctx.globalAlpha=1;
+          }});
+      }
+    }
+
+    // ICE LANCE — fires at nearest, freezes
+    if(A.ice_lance){
+      const lvl=A.ice_lance,interval=Math.max(0.5,1.3-lvl*0.12),dmg=40+lvl*8;
+      T.ice=(T.ice||0)-dt;
+      if(T.ice<=0){
+        T.ice=interval;
+        const tgt=this._nearest(p.x,p.y,420);
+        if(tgt){
+          const a=Math.atan2(tgt.y-p.y,tgt.x-p.x);
+          _spawnProj(p.x,p.y,Math.cos(a)*680,Math.sin(a)*680,dmg,6,1.0,'#88ddff',2);
+          // Apply slow on hit via custom logic — simpler: just slow target now
+          setTimeout(()=>{if(tgt.alive&&tgt.applySlow)tgt.applySlow(0.35,1.0);},80);
+        }
+      }
+    }
+
+    // SOLAR FLARE — periodic mega blast
+    if(A.solar_flare){
+      const lvl=A.solar_flare,interval=Math.max(3,7-lvl*0.5),dmg=200+lvl*40,r=220+lvl*20;
+      T.solar=(T.solar||0)-dt;
+      if(T.solar<=0){
+        T.solar=interval;
+        _aoe(p.x,p.y,r,dmg);Camera.shake(6,0.4);AudioManager.play('explosion');
+        Effects.add({x:p.x,y:p.y,r,life:0.7,maxLife:0.7,owner:p,
+          draw(){const sx=Camera.sx(this.owner.x),sy=Camera.sy(this.owner.y),f=1-this.life/this.maxLife;
+            ctx.save();ctx.globalCompositeOperation='lighter';
+            const rg=ctx.createRadialGradient(sx,sy,10,sx,sy,this.r*f);
+            rg.addColorStop(0,'rgba(255,255,255,1)');rg.addColorStop(0.4,'rgba(255,220,80,0.85)');rg.addColorStop(1,'rgba(255,120,20,0)');
+            ctx.globalAlpha=(1-f);ctx.fillStyle=rg;
+            ctx.beginPath();ctx.arc(sx,sy,this.r*f,0,Math.PI*2);ctx.fill();
+            ctx.restore();ctx.globalAlpha=1;
+          }});
+      }
+    }
+
+    // BLADE STORM — orbiting blades (similar to defender but at longer range)
+    if(A.blade_storm){
+      const lvl=A.blade_storm,n=3+lvl,dmg=25+lvl*5,r=70+lvl*8;
+      if(!S.bladeAng)S.bladeAng=0;
+      S.bladeAng-=dt*3.2;
+      T.blade=(T.blade||0)-dt;
+      if(T.blade<=0){
+        T.blade=0.16;
+        for(let i=0;i<n;i++){
+          const a=S.bladeAng+i/n*Math.PI*2;
+          const bx=p.x+Math.cos(a)*r,by=p.y+Math.sin(a)*r;
+          for(const e of Game.enemies){if(!e.alive)continue;const dx=e.x-bx,dy=e.y-by;if(dx*dx+dy*dy<(e.r+14)**2)e.takeDamage(dmg,p.id);}
+        }
+      }
+      Effects.add({_t:0,life:0.001,maxLife:0.001,draw(){
+        for(let i=0;i<n;i++){
+          const a=S.bladeAng+i/n*Math.PI*2;
+          const sx=Camera.sx(p.x+Math.cos(a)*r),sy=Camera.sy(p.y+Math.sin(a)*r);
+          ctx.save();ctx.translate(sx,sy);ctx.rotate(-a*3);
+          ctx.fillStyle='#ddddee';ctx.shadowColor='#ffffff';ctx.shadowBlur=8;
+          ctx.beginPath();ctx.moveTo(0,-12);ctx.lineTo(3,0);ctx.lineTo(0,12);ctx.lineTo(-3,0);ctx.closePath();ctx.fill();
+          ctx.restore();ctx.shadowBlur=0;
+        }
+      }});
+    }
+
+    // GRAVITY BOMB — places well that pulls + damages
+    if(A.gravity_bomb){
+      const lvl=A.gravity_bomb,interval=Math.max(3,8-lvl*0.7),dmg=100+lvl*20;
+      T.grav=(T.grav||0)-dt;
+      if(T.grav<=0){
+        T.grav=interval;
+        const tgt=this._nearest(p.x,p.y,400);
+        const tx=tgt?tgt.x:p.x,ty=tgt?tgt.y:p.y;
+        Effects.add({x:tx,y:ty,life:2.2,maxLife:2.2,_done:false,r:220,
+          update(d){
+            for(const e of Game.enemies){if(!e.alive)continue;const dx=this.x-e.x,dy=this.y-e.y,dd=Math.sqrt(dx*dx+dy*dy)||1;
+              if(dd<this.r){e.x+=dx/dd*70*d;e.y+=dy/dd*70*d;}}
+            if(!this._done&&this.life<0.3){this._done=true;_aoe(this.x,this.y,this.r*0.6,dmg);Camera.shake(4,0.3);}
+          },
+          draw(){const sx=Camera.sx(this.x),sy=Camera.sy(this.y),f=this.life/this.maxLife,t=performance.now()/200;
+            ctx.save();ctx.globalCompositeOperation='lighter';
+            for(let k=0;k<3;k++){const rr=this.r*(0.3+(1-f)*0.7)*(1-k*0.2);ctx.globalAlpha=f*0.35;
+              ctx.strokeStyle='#aa44ff';ctx.lineWidth=2;ctx.shadowColor='#aa44ff';ctx.shadowBlur=14;
+              ctx.beginPath();ctx.arc(sx,sy,rr+Math.sin(t+k)*5,0,Math.PI*2);ctx.stroke();}
+            ctx.fillStyle='#440066';ctx.globalAlpha=0.9;ctx.beginPath();ctx.arc(sx,sy,16,0,Math.PI*2);ctx.fill();
+            ctx.restore();ctx.shadowBlur=0;ctx.globalAlpha=1;
+          }});
+      }
+    }
+
+    // CHAIN STRIKE — on kill explosion (intercept death via overlay check each frame)
+    if(A.chain_strike){
+      const lvl=A.chain_strike,dmg=50+lvl*15,r=60+lvl*10;
+      // Track previously-alive enemies — when one transitions to dead, AoE there
+      if(!S.chainPrev)S.chainPrev=new Set();
+      const nowAlive=new Set();
+      for(const e of Game.enemies){if(e.alive)nowAlive.add(e.id);}
+      for(const e of Game.enemies){if(!e.alive&&S.chainPrev.has(e.id)){
+        _aoe(e.x,e.y,r,dmg);
+        Effects.add({x:e.x,y:e.y,r,life:0.3,maxLife:0.3,
+          draw(){const sx=Camera.sx(this.x),sy=Camera.sy(this.y),f=1-this.life/this.maxLife;
+            ctx.save();ctx.globalCompositeOperation='lighter';ctx.globalAlpha=(1-f)*0.8;
+            ctx.fillStyle='#ffcc22';ctx.shadowColor='#ffee44';ctx.shadowBlur=18;
+            ctx.beginPath();ctx.arc(sx,sy,this.r*f,0,Math.PI*2);ctx.fill();
+            ctx.restore();ctx.shadowBlur=0;ctx.globalAlpha=1;
+          }});
+      }}
+      S.chainPrev=nowAlive;
+    }
+
+    // CRYO BURST — periodic freeze ring
+    if(A.cryo_burst){
+      const lvl=A.cryo_burst,interval=Math.max(2,5-lvl*0.4),dmg=30+lvl*6,r=110+lvl*15;
+      T.cryo=(T.cryo||0)-dt;
+      if(T.cryo<=0){
+        T.cryo=interval;
+        for(const e of Game.enemies){if(!e.alive)continue;const dx=e.x-p.x,dy=e.y-p.y;
+          if(dx*dx+dy*dy<r*r){e.takeDamage(dmg,p.id);if(e.applySlow)e.applySlow(0.1,2.0);}}
+        Effects.add({x:p.x,y:p.y,r,life:0.5,maxLife:0.5,owner:p,
+          draw(){const sx=Camera.sx(this.owner.x),sy=Camera.sy(this.owner.y),f=1-this.life/this.maxLife;
+            ctx.save();ctx.globalCompositeOperation='lighter';ctx.globalAlpha=(1-f)*0.85;
+            ctx.strokeStyle='#aaeeff';ctx.lineWidth=5;ctx.shadowColor='#88ddff';ctx.shadowBlur=22;
+            ctx.beginPath();ctx.arc(sx,sy,this.r*f,0,Math.PI*2);ctx.stroke();
+            ctx.restore();ctx.shadowBlur=0;ctx.globalAlpha=1;
+          }});
+      }
+    }
+
+    // FIRE TRAIL — leaves burning footsteps as you move
+    if(A.fire_trail){
+      const lvl=A.fire_trail,dmg=8+lvl*2,life=1.5+lvl*0.3;
+      if(!S.lastTrail||(p.x-S.lastTrail.x)**2+(p.y-S.lastTrail.y)**2>900){
+        S.lastTrail={x:p.x,y:p.y};
+        Effects.add({x:p.x,y:p.y,r:36,life,maxLife:life,_tick:0,
+          update(d){this._tick+=d;if(this._tick>=0.5){this._tick=0;_aoe(this.x,this.y,this.r,dmg);}},
+          draw(){const sx=Camera.sx(this.x),sy=Camera.sy(this.y),f=this.life/this.maxLife;
+            ctx.save();ctx.globalCompositeOperation='lighter';ctx.globalAlpha=f*0.7;
+            ctx.fillStyle='#ff5500';ctx.shadowColor='#ff8822';ctx.shadowBlur=12;
+            ctx.beginPath();ctx.arc(sx,sy,this.r*f,0,Math.PI*2);ctx.fill();
+            ctx.restore();ctx.shadowBlur=0;ctx.globalAlpha=1;
+          }});
+      }
+    }
+
+    // VAMPIRIC AURA — heal per kill in range
+    if(A.vampiric_aura){
+      const lvl=A.vampiric_aura,r=140+lvl*20,heal=lvl*0.8;
+      if(!S.vampPrev)S.vampPrev=new Set();
+      for(const e of Game.enemies){if(!e.alive&&S.vampPrev.has(e.id)){
+        const dx=e.x-p.x,dy=e.y-p.y;
+        if(dx*dx+dy*dy<r*r&&p.hp<p.maxHp){p.hp=Math.min(p.maxHp,p.hp+heal);}
+      }}
+      const cur=new Set();for(const e of Game.enemies)if(e.alive)cur.add(e.id);
+      S.vampPrev=cur;
+    }
+
+    // AUTO TURRET — deploys turret periodically
+    if(A.turret_deploy){
+      const lvl=A.turret_deploy,interval=Math.max(6,12-lvl),dmg=28+lvl*5;
+      T.turr=(T.turr||0)-dt;
+      if(T.turr<=0){
+        T.turr=interval;
+        Effects.add({x:p.x,y:p.y,life:6,maxLife:6,_fire:0,_owner:p,
+          update(d){this._fire-=d;
+            if(this._fire<=0){this._fire=0.35;
+              let best=null,bd=400*400;for(const e of Game.enemies){if(!e.alive)continue;const dx=e.x-this.x,dy=e.y-this.y,d2=dx*dx+dy*dy;if(d2<bd){bd=d2;best=e;}}
+              if(best){const a=Math.atan2(best.y-this.y,best.x-this.x);_spawnProj(this.x,this.y,Math.cos(a)*700,Math.sin(a)*700,dmg,4,0.8,'#88ff88',1);this._aimA=a;}
+            }
+          },
+          draw(){const sx=Camera.sx(this.x),sy=Camera.sy(this.y),f=this.life/this.maxLife;
+            ctx.save();ctx.globalAlpha=Math.min(1,f*2);
+            ctx.fillStyle='#446644';ctx.beginPath();ctx.arc(sx,sy,12,0,Math.PI*2);ctx.fill();
+            ctx.fillStyle='#88ff88';ctx.shadowColor='#88ff88';ctx.shadowBlur=8;
+            ctx.beginPath();ctx.arc(sx,sy,8,0,Math.PI*2);ctx.fill();
+            // Barrel pointing at last aim
+            if(this._aimA!=null){ctx.strokeStyle='#88ff88';ctx.lineWidth=3;
+              ctx.beginPath();ctx.moveTo(sx,sy);ctx.lineTo(sx+Math.cos(this._aimA)*16,sy+Math.sin(this._aimA)*16);ctx.stroke();}
+            ctx.restore();ctx.shadowBlur=0;ctx.globalAlpha=1;
+          }});
+      }
+    }
+
+    // DOOMSDAY DEVICE — long charge, mega blast
+    if(A.doomsday){
+      const lvl=A.doomsday,charge=18,dmg=300+lvl*60,r=280+lvl*15;
+      T.doom=(T.doom||0)+dt;
+      if(T.doom>=charge){
+        T.doom=0;
+        _aoe(p.x,p.y,r,dmg);Camera.shake(10,0.6);AudioManager.play('explosion');
+        Effects.add({x:p.x,y:p.y,r,life:1.0,maxLife:1.0,owner:p,
+          draw(){const sx=Camera.sx(this.owner.x),sy=Camera.sy(this.owner.y),f=1-this.life/this.maxLife;
+            ctx.save();ctx.globalCompositeOperation='lighter';
+            const rg=ctx.createRadialGradient(sx,sy,20,sx,sy,this.r*f);
+            rg.addColorStop(0,'#ffffff');rg.addColorStop(0.3,'#ff44ff');rg.addColorStop(0.7,'#aa00ff');rg.addColorStop(1,'rgba(80,0,80,0)');
+            ctx.globalAlpha=(1-f);ctx.fillStyle=rg;
+            ctx.beginPath();ctx.arc(sx,sy,this.r*f,0,Math.PI*2);ctx.fill();
+            // shock ring
+            ctx.strokeStyle='#ff88ff';ctx.lineWidth=6;ctx.shadowColor='#ff44ff';ctx.shadowBlur=25;
+            ctx.beginPath();ctx.arc(sx,sy,this.r*f,0,Math.PI*2);ctx.stroke();
+            ctx.restore();ctx.shadowBlur=0;ctx.globalAlpha=1;
+          }});
+      } else {
+        // Charge indicator: small ring on player that fills
+        Effects.add({_t:0,life:0.001,maxLife:0.001,owner:p,draw(){
+          const sx=Camera.sx(this.owner.x),sy=Camera.sy(this.owner.y);
+          const pct=T.doom/charge;
+          ctx.save();ctx.strokeStyle='#ff00ff';ctx.lineWidth=2;ctx.shadowColor='#ff00ff';ctx.shadowBlur=6;
+          ctx.beginPath();ctx.arc(sx,sy,P_R+12,-Math.PI/2,-Math.PI/2+Math.PI*2*pct);ctx.stroke();
+          ctx.restore();ctx.shadowBlur=0;
+        }});
+      }
+    }
   },
 };
 // ─── ENEMIES ───────────────────────────────────────────────────
@@ -3717,9 +4265,10 @@ let _eid=1000;
 function _waveDifficulty(wave){
   const w=Math.max(1,wave||1);
   return {
-    hp: 1 + (w-1)*0.06 + Math.max(0,w-10)*0.04 + Math.max(0,w-20)*0.05,   // +6%/wave, +4% post-10, +5% post-20
-    dmg: 1 + (w-1)*0.05 + Math.max(0,w-10)*0.03 + Math.max(0,w-25)*0.06,  // +5%/wave, +3% post-10, +6% post-25
-    speed: 1 + (w-1)*0.012 + Math.max(0,w-15)*0.01                       // mild speed creep
+    // Steeper scaling per user request — game gets brutally hard fast
+    hp:    1 + (w-1)*0.09 + Math.max(0,w-10)*0.06 + Math.max(0,w-20)*0.08 + Math.max(0,w-30)*0.10,
+    dmg:   1 + (w-1)*0.07 + Math.max(0,w-10)*0.05 + Math.max(0,w-25)*0.08,
+    speed: 1 + (w-1)*0.018 + Math.max(0,w-15)*0.015
   };
 }
 class BaseEnemy{
@@ -7310,16 +7859,36 @@ const Spawner={
       Game._waveDamageTaken=false;Game._lastWaveCounted=this.wave;
       Save.setMaxStat('highestWave',this.wave);
       if(this.wave%10===0){
-        UI.announce(`★ BOSS WAVE ${this.wave} ★`,4,'#ff44aa');
-        Camera.shake(8,0.6);
+        // Unique boss every 10th wave — variants cycle and stack at higher waves
+        const variants=[
+          {id:'queen',name:'PINK QUEEN',color:'#cc0066',accent:'#ff44aa',hpMult:1.0,dmgMult:1.0,speedMult:1.0},
+          {id:'void',name:'VOID HUNTER',color:'#6622aa',accent:'#aa44ff',hpMult:1.15,dmgMult:1.10,speedMult:1.25,teleport:true},
+          {id:'inferno',name:'INFERNAL TITAN',color:'#cc3300',accent:'#ff8822',hpMult:1.35,dmgMult:1.25,speedMult:0.85,burnTrail:true},
+          {id:'frost',name:'ICE WARDEN',color:'#3388cc',accent:'#88ddff',hpMult:1.20,dmgMult:1.15,speedMult:0.95,slowAura:true},
+          {id:'storm',name:'STORMCALLER',color:'#ddaa22',accent:'#ffee44',hpMult:1.25,dmgMult:1.20,speedMult:1.10,lightning:true},
+        ];
+        const variant=variants[Math.floor(this.wave/10-1)%variants.length];
+        UI.announce(`★ ${variant.name} · WAVE ${this.wave} ★`,4,variant.accent);
+        Camera.shake(10,0.7);
         AudioManager.play('boss_spawn');
         const a=Math.random()*Math.PI*2,d=380;
         let bx=player.x+Math.cos(a)*d,by=player.y+Math.sin(a)*d;
         const c=clampPoly(bx,by,50);
-        const boss=new Boss(c.x,c.y,this.wave);boss._spawnT=performance.now()/1000;
+        const boss=new Boss(c.x,c.y,this.wave);
+        boss._spawnT=performance.now()/1000;
+        // Apply variant
+        boss.variant=variant;
+        boss.color=variant.color;
+        boss.maxHp=Math.floor(boss.maxHp*variant.hpMult*(1+Math.floor(this.wave/50)*0.5));
+        boss.hp=boss.maxHp;
+        boss.contactDmg=Math.floor(boss.contactDmg*variant.dmgMult);
+        boss.speed=Math.floor(boss.speed*variant.speedMult);
         // Apply post-wave-30 boss evolution modifiers
         BossEvo.apply(boss,this.wave);
         enemies.push(boss);
+        // BOSS-ONLY WAVE — block other spawns until boss dies
+        this.bossWaveActive=true;
+        this.activeBoss=boss;
       } else if(this.wave%5===0){
         // MINI-BOSS WAVE (every 5th, but not 10th — those are full bosses)
         UI.announce(`☠ MINI-BOSS WAVE ${this.wave} ☠`,3.5,'#ff8844');
@@ -7363,10 +7932,18 @@ const Spawner={
       if(this.wave>=20)extraBase+=Math.floor((this.wave-20)/2);
       if(this.wave>=30)extraBase+=Math.floor((this.wave-30)*0.9);
       const extra=Math.floor(extraBase*1.375)*_coopMult;
-      for(let i=0;i<extra;i++)this._doSpawn(enemies,player);
+      // Boss waves: skip all extras (boss-only fight)
+      if(!this.bossWaveActive){
+        for(let i=0;i<extra;i++)this._doSpawn(enemies,player);
+      }
+    }
+    // Clear boss-wave flag when the boss dies
+    if(this.bossWaveActive&&this.activeBoss&&!this.activeBoss.alive){
+      this.bossWaveActive=false;this.activeBoss=null;
     }
     const alive=enemies.filter(e=>e.alive).length;
-    if(alive<this.maxEnemies){
+    // Boss-only waves: prevent any regular spawns
+    if(!this.bossWaveActive&&alive<this.maxEnemies){
       this.spawnTimer-=dt;
       if(this.spawnTimer<=0){this.spawnTimer=this.spawnInterval;this._doSpawn(enemies,player);}
     }
@@ -7390,7 +7967,7 @@ const Spawner={
         ctx.beginPath();ctx.arc(sx,sy,this.r*0.4,0,Math.PI*2);ctx.stroke();ctx.shadowBlur=0;ctx.globalAlpha=1;},
       onExpire(){const e=new this._C(this.x,this.y,this._wave);Elites.maybeApply(e);Game.enemies.push(e);}});
   },
-  reset(){this.wave=1;this.waveTimer=22;this.spawnTimer=0;}
+  reset(){this.wave=1;this.waveTimer=22;this.spawnTimer=0;this.bossWaveActive=false;this.activeBoss=null;}
 };
 
 // ─── ARENA DRAW ───────────────────────────────────────────────
