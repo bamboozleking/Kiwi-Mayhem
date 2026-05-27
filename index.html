@@ -12,15 +12,26 @@
 <meta name="apple-mobile-web-app-title" content="Kiwi Mayhem">
 <title>Kiwi Mayhem</title>
 <script type="module">
-  // Trystero — free P2P WebRTC over BitTorrent trackers (no server needed).
-  // Powers online multiplayer. Loaded as ESM and exposed on window for the
-  // main (non-module) script below.
-  try{
-    const m=await import('https://esm.sh/trystero@0.20.0/torrent');
-    window.MP={joinRoom:m.joinRoom,selfId:m.selfId,ready:true};
-  }catch(e){
-    console.warn('[MP] Trystero failed to load — online multiplayer disabled.',e);
-    window.MP={ready:false,error:e&&e.message||'load failed'};
+  // Trystero — free P2P WebRTC over public signaling (no server needed).
+  // Powers online multiplayer. Try multiple CDNs in case one is blocked/slow.
+  const CDNS=[
+    'https://esm.sh/trystero@0.21.5/torrent',
+    'https://cdn.jsdelivr.net/npm/trystero@0.21.5/+esm',
+    'https://esm.sh/trystero/torrent',
+    'https://esm.sh/trystero@0.20.0/torrent'
+  ];
+  let loaded=null,lastErr=null;
+  for(const url of CDNS){
+    try{
+      const m=await import(url);
+      if(m&&m.joinRoom){loaded=m;console.log('[MP] Trystero loaded from',url);break;}
+    }catch(e){lastErr=e;console.warn('[MP] CDN failed:',url,e&&e.message);}
+  }
+  if(loaded){
+    window.MP={joinRoom:loaded.joinRoom,selfId:loaded.selfId,ready:true};
+  } else {
+    console.warn('[MP] All Trystero CDNs failed — online multiplayer disabled.',lastErr);
+    window.MP={ready:false,error:(lastErr&&lastErr.message)||'all CDNs failed'};
   }
   window.dispatchEvent(new Event('mp-ready'));
 </script>
