@@ -23,7 +23,26 @@
 'use strict';
 const canvas=document.getElementById('gameCanvas');
 const ctx=canvas.getContext('2d');
-canvas.width=window.innerWidth;canvas.height=window.innerHeight;
+// Virtual design resolution — game UI was authored for ~1920x1080.
+// We render at this fixed internal size and CSS-scale the canvas to fit
+// the device viewport, so the layout is identical on phone and desktop.
+const VIRTUAL_W=1920, VIRTUAL_H=1080;
+canvas.width=VIRTUAL_W;canvas.height=VIRTUAL_H;
+function _fitCanvas(){
+  const vw=window.innerWidth, vh=window.innerHeight;
+  const s=Math.min(vw/VIRTUAL_W, vh/VIRTUAL_H);
+  canvas.style.width=(VIRTUAL_W*s)+'px';
+  canvas.style.height=(VIRTUAL_H*s)+'px';
+}
+_fitCanvas();
+// Convert client (CSS pixel) coords to canvas (virtual pixel) coords
+function _toCanvas(cx,cy){
+  const r=canvas.getBoundingClientRect();
+  return {
+    x:(cx-r.left)*(canvas.width/r.width),
+    y:(cy-r.top)*(canvas.height/r.height)
+  };
+}
 
 if(!CanvasRenderingContext2D.prototype.roundRect){
   CanvasRenderingContext2D.prototype.roundRect=function(x,y,w,h,r){
@@ -132,8 +151,8 @@ const Input={
       if(['KeyW','KeyA','KeyS','KeyD','KeyQ','KeyE','KeyF','KeyR','Space'].includes(e.code))e.preventDefault();
     });
     window.addEventListener('keyup',e=>{this.keys[e.code]=false;});
-    canvas.addEventListener('mousemove',e=>{this.mouse.x=e.clientX;this.mouse.y=e.clientY;});
-    canvas.addEventListener('mousedown',e=>{if(e.button===0){this.mouse.down=true;this.mouseJustPressed=true;this.clickPos={x:e.clientX,y:e.clientY};}});
+    canvas.addEventListener('mousemove',e=>{const p=_toCanvas(e.clientX,e.clientY);this.mouse.x=p.x;this.mouse.y=p.y;});
+    canvas.addEventListener('mousedown',e=>{if(e.button===0){const p=_toCanvas(e.clientX,e.clientY);this.mouse.down=true;this.mouseJustPressed=true;this.clickPos=p;}});
     canvas.addEventListener('mouseup',e=>{if(e.button===0)this.mouse.down=false;});
     canvas.addEventListener('contextmenu',e=>e.preventDefault());
   },
@@ -314,34 +333,36 @@ const TouchControls={
   _start(e){
     this._used=true;
     for(const t of e.changedTouches){
+      const p=_toCanvas(t.clientX,t.clientY);
       // Fullscreen button (always available in any game state)
-      if(this._hitFS(t.clientX,t.clientY)){this._toggleFS();continue;}
+      if(this._hitFS(p.x,p.y)){this._toggleFS();continue;}
       // Menus: emulate click tap
       if(typeof Game!=='undefined'&&Game.state!=='playing'){
-        Input.mouse.x=t.clientX;Input.mouse.y=t.clientY;
-        Input.mouseJustPressed=true;Input.clickPos={x:t.clientX,y:t.clientY};
+        Input.mouse.x=p.x;Input.mouse.y=p.y;
+        Input.mouseJustPressed=true;Input.clickPos={x:p.x,y:p.y};
         continue;
       }
       // Ability buttons checked before joystick zones
-      if(this._hit(t.clientX,t.clientY,this._qc())){Input.justPressed.add('KeyQ');continue;}
-      if(this._hit(t.clientX,t.clientY,this._rlc())){Input.justPressed.add('KeyR');continue;}
-      if(this._hit(t.clientX,t.clientY,this._fc())){Input.justPressed.add('KeyF');continue;}
+      if(this._hit(p.x,p.y,this._qc())){Input.justPressed.add('KeyQ');continue;}
+      if(this._hit(p.x,p.y,this._rlc())){Input.justPressed.add('KeyR');continue;}
+      if(this._hit(p.x,p.y,this._fc())){Input.justPressed.add('KeyF');continue;}
       // Joystick zones: left half = move, right half = aim/fire
-      if(t.clientX<canvas.width/2){
-        if(this.lId===-1){this.lId=t.identifier;this.lOrigin={x:t.clientX,y:t.clientY};this.lx=0;this.ly=0;}
+      if(p.x<canvas.width/2){
+        if(this.lId===-1){this.lId=t.identifier;this.lOrigin={x:p.x,y:p.y};this.lx=0;this.ly=0;}
       } else {
-        if(this.rId===-1){this.rId=t.identifier;this.rOrigin={x:t.clientX,y:t.clientY};this.rx=0;this.ry=0;this.rActive=true;this.rJust=true;}
+        if(this.rId===-1){this.rId=t.identifier;this.rOrigin={x:p.x,y:p.y};this.rx=0;this.ry=0;this.rActive=true;this.rJust=true;}
       }
     }
   },
   _move(e){
     for(const t of e.changedTouches){
+      const p=_toCanvas(t.clientX,t.clientY);
       if(t.identifier===this.lId&&this.lOrigin){
-        const dx=t.clientX-this.lOrigin.x,dy=t.clientY-this.lOrigin.y,d=Math.sqrt(dx*dx+dy*dy)||1;
+        const dx=p.x-this.lOrigin.x,dy=p.y-this.lOrigin.y,d=Math.sqrt(dx*dx+dy*dy)||1;
         const m=Math.min(d/this.R,1);this.lx=(dx/d)*m;this.ly=(dy/d)*m;
       }
       if(t.identifier===this.rId&&this.rOrigin){
-        const dx=t.clientX-this.rOrigin.x,dy=t.clientY-this.rOrigin.y,d=Math.sqrt(dx*dx+dy*dy)||1;
+        const dx=p.x-this.rOrigin.x,dy=p.y-this.rOrigin.y,d=Math.sqrt(dx*dx+dy*dy)||1;
         const m=Math.min(d/this.R,1);this.rx=(dx/d)*m;this.ry=(dy/d)*m;
       }
     }
@@ -9381,8 +9402,9 @@ const Game={
   start(){this.init();requestAnimationFrame(t=>{this.last=t;this.loop(t);});}
 };
 
-function _resizeCanvas(){canvas.width=window.innerWidth;canvas.height=window.innerHeight;}
+function _resizeCanvas(){_fitCanvas();}
 window.addEventListener('resize',_resizeCanvas);
+window.addEventListener('orientationchange',()=>{setTimeout(_resizeCanvas,100);});
 document.addEventListener('fullscreenchange',()=>{setTimeout(_resizeCanvas,50);});
 
 // ─── PWA MANIFEST ──────────────────────────────────────────────
