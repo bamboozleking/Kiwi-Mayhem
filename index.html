@@ -1729,7 +1729,8 @@ const CarePackages={
   list:[],
   spawnTimer:35,
   // Only MYTHIC care weapons (all entries below are mythic now)
-  TYPES:['kraber','lstar','eva8','mastiff','devotion','fish','chicken','bees','dice','blackhole'],
+  // 'kraber' and 'chicken' removed from spawn pool per user request
+  TYPES:['lstar','eva8','mastiff','devotion','fish','bees','dice','blackhole'],
   spawn(){
     let x,y,tries=0;
     do{x=300+Math.random()*(ARENA-600);y=300+Math.random()*(ARENA-600);tries++;}
@@ -2222,7 +2223,7 @@ const WEAPON_DEFS={
     desc:'Slows 50% for 3s · pierces 1',pickAmmo:80,silly:'icegun',rarity:'common'},
 };
 const WEAPON_ORDER_OVERRIDE=['r301','flatline','r99','sentinel','peacekeeper','katana','banana'];
-const WEAPON_ORDER=['r301','flatline','r99','sentinel','peacekeeper','katana','banana','rubberchicken','slipper','plunger','beehive','dicegun','portalgun','vacuum','disco','keyboard','blackholegun','timegun','spaceoddity','lucille','lavagun','icegun']
+const WEAPON_ORDER=['r301','flatline','r99','sentinel','peacekeeper','katana','banana','slipper','plunger','beehive','dicegun','portalgun','vacuum','disco','keyboard','blackholegun','timegun','spaceoddity','lucille','lavagun','icegun']
   .sort((a,b)=>RARITY_ORDER[WEAPON_DEFS[a].rarity||'common']-RARITY_ORDER[WEAPON_DEFS[b].rarity||'common']);
 
 // ─── LEVEL 10 ULTIMATES (one per character) ────────────────────
