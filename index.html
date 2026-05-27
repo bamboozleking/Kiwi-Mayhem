@@ -11,6 +11,19 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Kiwi Mayhem">
 <title>Kiwi Mayhem</title>
+<script type="module">
+  // Trystero — free P2P WebRTC over BitTorrent trackers (no server needed).
+  // Powers online multiplayer. Loaded as ESM and exposed on window for the
+  // main (non-module) script below.
+  try{
+    const m=await import('https://esm.sh/trystero@0.20.0/torrent');
+    window.MP={joinRoom:m.joinRoom,selfId:m.selfId,ready:true};
+  }catch(e){
+    console.warn('[MP] Trystero failed to load — online multiplayer disabled.',e);
+    window.MP={ready:false,error:e&&e.message||'load failed'};
+  }
+  window.dispatchEvent(new Event('mp-ready'));
+</script>
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
   body { background:#06060c; display:flex; justify-content:center; align-items:center; height:100vh; overflow:hidden; font-family:monospace; }
@@ -285,6 +298,168 @@ const Gamepads={
     const g=this.get(slot);if(!g||!g.vibrationActuator)return;
     try{g.vibrationActuator.playEffect('dual-rumble',{startDelay:0,duration,strongMagnitude:strong,weakMagnitude:weak});}catch(e){}
   },
+};
+
+// ─── ONLINE MULTIPLAYER (P2P via Trystero) ─────────────────────
+const Net={
+  // Lifecycle
+  enabled:false,           // true once room is joined
+  isHost:false,
+  roomCode:'',
+  selfId:'',
+  status:'',               // status text for UI
+  // Connection
+  room:null,
+  // Wire actions (set up after room is joined)
+  _sendInput:null,         // client → host: player input
+  _sendState:null,         // host → clients: world snapshot
+  _sendStart:null,         // host → clients: signal to start game with seed
+  _sendLobby:null,         // host → clients: lobby state (char picks, etc)
+  _sendPick:null,          // client → host: my char + weapon pick
+  _sendChat:null,          // anyone → all: chat / ping
+  // Inbound buffers (latest only)
+  inputs:{},               // by peerId: {mx,my,aim,sh,q,r,f,t}
+  lastSnapshot:null,       // for clients: last world snapshot
+  lobbyState:null,         // for clients: latest lobby state
+  // Player roster: array of {peerId, charId, weaponId, slot, isLocal, isHost}
+  roster:[],
+  // Selected char + weapon (mirrors for outbound pick)
+  myCharId:null, myWeaponId:null,
+  // Send tick throttle
+  _stateAccum:0, _inputAccum:0,
+  STATE_HZ:12,  // host broadcast rate
+  INPUT_HZ:24,  // client input rate
+  // Generate a short alphanumeric room code
+  newCode(){
+    const C='ABCDEFGHJKMNPQRSTUVWXYZ23456789';let s='';
+    for(let i=0;i<6;i++)s+=C[Math.floor(Math.random()*C.length)];
+    return s;
+  },
+  ready(){return !!(window.MP&&window.MP.ready);},
+  errorMessage(){return window.MP&&window.MP.error?window.MP.error:null;},
+  // Create or join a room. Returns true on success (room object created).
+  async connect(code,asHost){
+    if(!this.ready()){this.status='Network library not loaded';return false;}
+    if(this.room){try{this.room.leave();}catch(_){}}
+    this.enabled=false;this.isHost=asHost;this.roomCode=code;this.roster=[];this.inputs={};this.lastSnapshot=null;this.lobbyState=null;
+    try{
+      this.room=window.MP.joinRoom({appId:'kiwi-mayhem-v1'},code);
+      this.selfId=window.MP.selfId;
+      [this._sendInput,this._getInput]=this.room.makeAction('inp');
+      [this._sendState,this._getState]=this.room.makeAction('st');
+      [this._sendStart,this._getStart]=this.room.makeAction('go');
+      [this._sendLobby,this._getLobby]=this.room.makeAction('lb');
+      [this._sendPick,this._getPick]=this.room.makeAction('pk');
+      [this._sendChat,this._getChat]=this.room.makeAction('ch');
+      this._getInput((data,pid)=>{this.inputs[pid]=data;});
+      this._getState(data=>{if(!this.isHost)this.lastSnapshot=data;});
+      this._getStart(data=>{if(!this.isHost)Game._onlineStart(data);});
+      this._getLobby(data=>{if(!this.isHost)this.lobbyState=data;});
+      this._getPick((data,pid)=>{
+        if(!this.isHost)return;
+        // host updates roster from a client's pick
+        const r=this.roster.find(p=>p.peerId===pid);
+        if(r){r.charId=data.charId;r.weaponId=data.weaponId;}
+        this._broadcastLobby();
+      });
+      this.room.onPeerJoin(pid=>{
+        if(this.isHost){
+          // Add to roster (next free slot)
+          const slot=this._nextSlot();
+          this.roster.push({peerId:pid,charId:'octane',weaponId:'r301',slot,isLocal:false,isHost:false});
+          this._broadcastLobby();
+        }
+      });
+      this.room.onPeerLeave(pid=>{
+        delete this.inputs[pid];
+        if(this.isHost){
+          this.roster=this.roster.filter(p=>p.peerId!==pid);
+          this._broadcastLobby();
+        } else {
+          // If host left, drop us back to menu
+          if(this.lobbyState&&this.lobbyState.hostId===pid){
+            this.disconnect();
+            if(typeof Game!=='undefined')Game.state='main_menu';
+          }
+        }
+      });
+      // Host registers itself first
+      if(this.isHost){
+        this.roster.push({peerId:this.selfId,charId:'octane',weaponId:'r301',slot:0,isLocal:true,isHost:true});
+        this._broadcastLobby();
+      }
+      this.enabled=true;
+      this.status=asHost?`Room ${code} · waiting for players`:`Joined ${code} · waiting for host`;
+      return true;
+    }catch(e){
+      this.status='Connection failed: '+(e&&e.message||'unknown');
+      console.error('[MP] connect failed',e);
+      return false;
+    }
+  },
+  disconnect(){
+    if(this.room){try{this.room.leave();}catch(_){}}
+    this.room=null;this.enabled=false;this.isHost=false;this.roomCode='';this.roster=[];this.inputs={};this.lastSnapshot=null;this.lobbyState=null;this.status='';
+  },
+  _nextSlot(){
+    const used=new Set(this.roster.map(r=>r.slot));
+    for(let i=0;i<4;i++)if(!used.has(i))return i;
+    return 0;
+  },
+  _broadcastLobby(){
+    if(!this.isHost||!this._sendLobby)return;
+    const state={hostId:this.selfId,roster:this.roster.map(r=>({peerId:r.peerId,charId:r.charId,weaponId:r.weaponId,slot:r.slot,isHost:r.isHost}))};
+    this.lobbyState=state;
+    try{this._sendLobby(state);}catch(_){}
+  },
+  // Client updates its own char/weapon pick and tells host
+  setMyPick(charId,weaponId){
+    this.myCharId=charId;this.myWeaponId=weaponId;
+    if(this.isHost){
+      const r=this.roster.find(p=>p.peerId===this.selfId);
+      if(r){r.charId=charId;r.weaponId=weaponId;}
+      this._broadcastLobby();
+    } else if(this._sendPick){
+      try{this._sendPick({charId,weaponId});}catch(_){}
+    }
+  },
+  // Host begins game, broadcasting roster + seed
+  hostStart(){
+    if(!this.isHost)return null;
+    const seed=Math.floor(Math.random()*0xffffffff);
+    const payload={
+      roster:this.roster.map((r,i)=>({peerId:r.peerId,charId:r.charId,weaponId:r.weaponId,slot:i,isHost:r.isHost})),
+      seed,hostId:this.selfId,startAt:Date.now()
+    };
+    // Re-slot in order
+    payload.roster.forEach((r,i)=>r.slot=i);
+    try{this._sendStart(payload);}catch(_){}
+    return payload;
+  },
+  // Roster getter for whoever needs it (always reflects local view)
+  currentRoster(){
+    if(this.isHost)return this.roster;
+    return (this.lobbyState&&this.lobbyState.roster)||[];
+  },
+  playerCount(){return this.currentRoster().length;},
+  // Host: ingest peer input, returns {peerId: latestInput}
+  consumeInputs(){return this.inputs;},
+  // Client: send our input
+  sendInput(input,dt){
+    if(!this.enabled||this.isHost||!this._sendInput)return;
+    this._inputAccum+=dt;
+    if(this._inputAccum<1/this.INPUT_HZ)return;
+    this._inputAccum=0;
+    try{this._sendInput(input);}catch(_){}
+  },
+  // Host: broadcast world snapshot
+  broadcast(snap,dt){
+    if(!this.enabled||!this.isHost||!this._sendState)return;
+    this._stateAccum+=dt;
+    if(this._stateAccum<1/this.STATE_HZ)return;
+    this._stateAccum=0;
+    try{this._sendState(snap);}catch(_){}
+  }
 };
 
 // ─── TOUCH CONTROLS ────────────────────────────────────────────
@@ -7057,7 +7232,11 @@ class Player{
 const Spawner={
   wave:1,waveTimer:30,spawnTimer:0,waveActive:true,
   get maxEnemies(){
-    const mult=(typeof Game!=='undefined'&&Game.numPlayers===2)?2:1;
+    let mult=(typeof Game!=='undefined'&&Game.numPlayers===2)?2:1;
+    // ONLINE: +50% per additional player (1p=1.0, 2p=1.5, 3p=2.0, 4p=2.5)
+    if(typeof Game!=='undefined'&&Game.online&&Game.onlineRoster&&Game.onlineRoster.length>1){
+      mult=1+0.5*(Game.onlineRoster.length-1);
+    }
     const w=this.wave;
     // +10% additional on top of current values per user request
     let base=22+(w-1)*7;
@@ -8702,9 +8881,10 @@ const UI={
       ctx.fillStyle=p2gp?'#88ff88':'#ff6666';ctx.font='10px monospace';
       ctx.fillText(p2gp?'P2 controller READY':'P2 needs 2nd controller (connect & press button)',cx,togY+22);
     }
-    // Buttons (6)
+    // Buttons (7 — added ONLINE)
     const btns=[
       {label:Game.coopPlayers===2?'▶  PLAY · 2P CO-OP':'▶  PLAY',id:'play',color:'#44ffff'},
+      {label:'🌐  ONLINE  (up to 4)',id:'online',color:'#aa88ff'},
       {label:'🐾  PETS',id:'pets',color:'#ffaa44'},
       {label:'🌳  EVOLUTION TREE',id:'tree',color:'#ffdd66'},
       {label:'📊  STATS',id:'stats',color:'#88ff88'},
@@ -8776,10 +8956,167 @@ const UI={
       return 'set_2p';
     }
     const baseY=cy-50;
-    const ids=['play','pets','tree','stats','settings','quit'];
+    const ids=['play','online','pets','tree','stats','settings','quit'];
     for(let i=0;i<ids.length;i++){const by=baseY+i*46;if(mx>=cx-130&&mx<=cx+130&&my>=by-19&&my<=by+19)return ids[i];}
     return null;
   },
+
+  // ── ONLINE LOBBY ──
+  drawOnlineMenu(click,subState){
+    const cx=canvas.width/2,cy=canvas.height/2,t=performance.now()/1000;
+    const bg=ctx.createRadialGradient(cx,cy,100,cx,cy,canvas.width*0.9);
+    bg.addColorStop(0,'#0a1a2a');bg.addColorStop(1,'#020512');
+    ctx.fillStyle=bg;ctx.fillRect(0,0,canvas.width,canvas.height);
+    // title
+    ctx.fillStyle='#44ffff';ctx.shadowColor='#44ffff';ctx.shadowBlur=20;
+    ctx.font='bold 64px monospace';ctx.textAlign='center';
+    ctx.fillText('🌐 ONLINE',cx,140);ctx.shadowBlur=0;
+    ctx.fillStyle='rgba(180,220,255,0.55)';ctx.font='13px monospace';
+    ctx.fillText('PEER-TO-PEER COOPERATIVE · UP TO 4 PLAYERS',cx,170);
+
+    // Network ready check
+    if(!Net.ready()){
+      ctx.fillStyle='#ff6666';ctx.font='bold 18px monospace';
+      ctx.fillText('⚠  NETWORK LIBRARY FAILED TO LOAD',cx,cy);
+      ctx.fillStyle='rgba(255,255,255,0.6)';ctx.font='11px monospace';
+      ctx.fillText('Try reloading the page — Trystero may be blocked',cx,cy+22);
+      // back btn
+      this._drawMenuBtn(cx,cy+80,260,40,'← BACK','#ff6666',click);
+      return;
+    }
+
+    // Sub-state: 'choose' (host/join), 'host' (waiting), 'join' (enter code), 'lobby' (in room)
+    if(subState==='choose'){
+      this._drawMenuBtn(cx,cy-30,300,52,'🪐  HOST A ROOM','#44ffff',click);
+      this._drawMenuBtn(cx,cy+40,300,52,'🔗  JOIN A ROOM','#ffaa44',click);
+      this._drawMenuBtn(cx,cy+150,260,40,'← BACK','#aaaaaa',click);
+    } else if(subState==='join_input'){
+      // Code entry box
+      ctx.fillStyle='rgba(180,220,255,0.8)';ctx.font='14px monospace';
+      ctx.fillText('ENTER ROOM CODE',cx,cy-90);
+      const boxW=380,boxH=70,boxX=cx-boxW/2,boxY=cy-50;
+      // panel
+      this.panel(boxX,boxY,boxW,boxH,10,0.85);
+      ctx.fillStyle='#ffffff';ctx.shadowColor='#44ffff';ctx.shadowBlur=14;
+      ctx.font='bold 38px monospace';ctx.textAlign='center';
+      const code=(Game._onlineJoinCode||'').padEnd(6,'_');
+      ctx.fillText(code,cx,boxY+48);ctx.shadowBlur=0;
+      ctx.fillStyle='rgba(180,220,255,0.5)';ctx.font='11px monospace';
+      ctx.fillText('Tap to open keyboard, type the 6-char code',cx,boxY+boxH+16);
+      // store hit area for keyboard focus
+      this._codeBoxRect={x:boxX,y:boxY,w:boxW,h:boxH};
+      // connect btn
+      const canConnect=(Game._onlineJoinCode||'').length===6;
+      this._drawMenuBtn(cx,cy+70,260,46,'▶  CONNECT',canConnect?'#44ff88':'#666666',click,!canConnect);
+      this._drawMenuBtn(cx,cy+140,260,40,'← BACK','#aaaaaa',click);
+    } else if(subState==='lobby'){
+      // Room code display
+      ctx.fillStyle='rgba(180,220,255,0.7)';ctx.font='14px monospace';
+      ctx.fillText(Net.isHost?'YOUR ROOM CODE — SHARE TO INVITE':'JOINED ROOM',cx,cy-170);
+      const codeW=380,codeH=64,codeX=cx-codeW/2,codeY=cy-150;
+      this.panel(codeX,codeY,codeW,codeH,10,0.85);
+      ctx.fillStyle='#ffffff';ctx.shadowColor='#44ffff';ctx.shadowBlur=18;
+      ctx.font='bold 46px monospace';ctx.textAlign='center';
+      ctx.fillText(Net.roomCode,cx,codeY+47);ctx.shadowBlur=0;
+      // Player roster
+      const roster=Net.currentRoster();
+      const count=roster.length;
+      ctx.fillStyle='rgba(180,220,255,0.6)';ctx.font='12px monospace';
+      ctx.fillText(`PLAYERS  ${count} / 4`,cx,codeY+codeH+24);
+      // 4 player slots in a row
+      const slotW=160,slotH=110,gap=14;
+      const totalW=4*slotW+3*gap, startX=cx-totalW/2, slotY=codeY+codeH+40;
+      for(let i=0;i<4;i++){
+        const sx=startX+i*(slotW+gap), sy=slotY;
+        const p=roster[i];
+        // Slot panel
+        ctx.fillStyle=p?'rgba(30,40,70,0.9)':'rgba(10,15,30,0.6)';
+        ctx.strokeStyle=p?(p.isHost?'#44ffff':'#88ccff'):'rgba(80,100,140,0.4)';
+        ctx.lineWidth=p?2:1;
+        ctx.beginPath();ctx.roundRect(sx,sy,slotW,slotH,8);ctx.fill();ctx.stroke();
+        if(p){
+          const charDef=CHAR_DEFS[p.charId]||CHAR_DEFS.octane;
+          // Char color stripe
+          ctx.fillStyle=charDef.color;ctx.globalAlpha=0.25;
+          ctx.beginPath();ctx.roundRect(sx,sy,slotW,8,3);ctx.fill();ctx.globalAlpha=1;
+          // Char name
+          ctx.fillStyle=charDef.color;ctx.font='bold 14px monospace';ctx.textAlign='center';
+          ctx.fillText(charDef.name,sx+slotW/2,sy+32);
+          // Slot number / host tag
+          ctx.fillStyle=p.isHost?'#44ffff':'#aaaaaa';ctx.font='10px monospace';
+          ctx.fillText(p.isHost?'🪐 HOST':`P${i+1}`,sx+slotW/2,sy+50);
+          // Weapon name
+          const wDef=WEAPON_DEFS[p.weaponId];
+          if(wDef){
+            ctx.fillStyle='rgba(220,220,220,0.7)';ctx.font='10px monospace';
+            ctx.fillText(wDef.name,sx+slotW/2,sy+slotH-26);
+          }
+          // "YOU" badge
+          if(p.peerId===Net.selfId){
+            ctx.fillStyle='#88ff88';ctx.font='bold 10px monospace';
+            ctx.fillText('● YOU',sx+slotW/2,sy+slotH-10);
+          }
+        } else {
+          ctx.fillStyle='rgba(140,160,200,0.4)';ctx.font='13px monospace';ctx.textAlign='center';
+          ctx.fillText('WAITING',sx+slotW/2,sy+slotH/2+5);
+        }
+      }
+      // Info text
+      const enemiesMult=1+0.5*(count-1);
+      ctx.fillStyle='rgba(180,220,255,0.55)';ctx.font='11px monospace';
+      ctx.fillText(`Wave enemies × ${enemiesMult.toFixed(1)}  ·  No friendly fire`,cx,slotY+slotH+24);
+      // Buttons
+      this._drawMenuBtn(cx-150,slotY+slotH+62,260,42,'🎭  PICK CHARACTER','#ffaa44',click);
+      if(Net.isHost){
+        const canStart=count>=1;
+        this._drawMenuBtn(cx+150,slotY+slotH+62,260,42,canStart?'▶  START GAME':'WAITING…','#44ff88',click,!canStart);
+      } else {
+        ctx.fillStyle='rgba(180,220,255,0.5)';ctx.font='11px monospace';
+        ctx.fillText('Waiting for host to start…',cx+150,slotY+slotH+62+5);
+      }
+      this._drawMenuBtn(cx,slotY+slotH+118,200,38,'← LEAVE','#ff6666',click);
+      // Status line
+      if(Net.status){
+        ctx.fillStyle='rgba(180,220,255,0.45)';ctx.font='10px monospace';
+        ctx.fillText(Net.status,cx,canvas.height-20);
+      }
+    }
+  },
+  _drawMenuBtn(cx,cy,bw,bh,label,color,click,disabled){
+    const mx=Input.mouse.x,my=Input.mouse.y;
+    const hover=!disabled&&(mx>=cx-bw/2&&mx<=cx+bw/2&&my>=cy-bh/2&&my<=cy+bh/2);
+    // shadow
+    ctx.fillStyle='rgba(0,0,0,0.55)';
+    ctx.beginPath();ctx.roundRect(cx-bw/2+2,cy-bh/2+4,bw,bh,10);ctx.fill();
+    // body
+    const bgr=ctx.createLinearGradient(cx,cy-bh/2,cx,cy+bh/2);
+    if(disabled){
+      bgr.addColorStop(0,'rgba(40,40,55,0.7)');bgr.addColorStop(1,'rgba(20,20,30,0.7)');
+    } else if(hover){
+      bgr.addColorStop(0,`${color}55`);bgr.addColorStop(0.5,`${color}33`);bgr.addColorStop(1,`${color}18`);
+    } else {
+      bgr.addColorStop(0,'rgba(36,40,70,0.85)');bgr.addColorStop(0.5,'rgba(20,22,46,0.85)');bgr.addColorStop(1,'rgba(10,12,28,0.85)');
+    }
+    if(hover){ctx.shadowColor=color;ctx.shadowBlur=20;}
+    ctx.fillStyle=bgr;
+    ctx.beginPath();ctx.roundRect(cx-bw/2,cy-bh/2,bw,bh,10);ctx.fill();
+    ctx.shadowBlur=0;
+    // top sheen
+    const sh=ctx.createLinearGradient(cx,cy-bh/2,cx,cy-bh/2+8);
+    sh.addColorStop(0,'rgba(255,255,255,0.20)');sh.addColorStop(1,'rgba(255,255,255,0)');
+    ctx.fillStyle=sh;
+    ctx.beginPath();ctx.roundRect(cx-bw/2+2,cy-bh/2+1,bw-4,8,8);ctx.fill();
+    ctx.strokeStyle=disabled?'rgba(80,80,100,0.6)':color;
+    ctx.lineWidth=hover?2.5:1.5;
+    ctx.beginPath();ctx.roundRect(cx-bw/2,cy-bh/2,bw,bh,10);ctx.stroke();
+    // label
+    ctx.shadowColor='rgba(0,0,0,0.6)';ctx.shadowBlur=hover?6:3;
+    ctx.fillStyle=disabled?'rgba(150,150,160,0.7)':(hover?'#fff':color);
+    ctx.font=`bold ${hover?17:15}px monospace`;ctx.textAlign='center';
+    ctx.fillText(label,cx,cy+6);ctx.shadowBlur=0;
+    // Click hit (caller checks the same area)
+  },
+  hitMenuBtn(mx,my,cx,cy,bw,bh){return mx>=cx-bw/2&&mx<=cx+bw/2&&my>=cy-bh/2&&my<=cy+bh/2;},
 
   // ── PAUSE MENU ──
   drawPauseMenu(){
@@ -9275,18 +9612,59 @@ const UI={
 
 // ─── GAME ────────────────────────────────────────────────────
 const Game={
-  state:'main_menu', // main_menu, char_select, weapon_select, playing, paused, level_up, game_over, settings, tree, stats
+  state:'main_menu', // main_menu, char_select, weapon_select, playing, paused, level_up, game_over, settings, tree, stats, online_menu, online_char_select, online_weapon_select
   player:null,enemies:[],decoys:[],witchSpells:[],bees:[],healthOrbs:[],
   time:0,last:0,deathTimer:0,lastHealWave:0,
   selectedChar:null,
   levelUpChoices:null,levelUpHover:-1,
   lastUpgrade:null,
+  // ── Online state ──
+  online:false,
+  onlineRoster:[],
+  onlineHostId:'',
+  onlineSeed:0,
+  remotePlayers:{},   // peerId → ghost player object (rendered, not simulated)
+  _onlineSub:'choose',
+  _onlineJoinCode:'',
   init(){
     Input.init();
     Gamepads.init();
     TouchControls.init();
     generateObstacles();
     AmmoCrates.spawnInit();
+  },
+  // Called when host clicks "START GAME" in online lobby (locally), and when
+  // the host's start payload arrives on each client. Begins the run + records
+  // the multiplayer roster so the spawner can scale enemies and we know who the remotes are.
+  _onlineStart(payload){
+    if(!payload||!payload.roster)return;
+    this.online=true;
+    this.onlineRoster=payload.roster;
+    this.onlineHostId=payload.hostId;
+    this.onlineSeed=payload.seed;
+    // Find OUR entry in the roster
+    const me=payload.roster.find(r=>r.peerId===Net.selfId);
+    const myChar=me?me.charId:'octane';
+    const myWeapon=me?me.weaponId:'r301';
+    // Start the local run with our pick
+    this.startGame(myChar,myWeapon);
+    // Mark online again (startGame may have reset some flags)
+    this.online=true;
+    this.onlineRoster=payload.roster;
+    this.onlineHostId=payload.hostId;
+    // Build remote-player "ghost" map (peerId → {x,y,angle,aimAngle,hp,charId,weaponId,alive})
+    this.remotePlayers={};
+    payload.roster.forEach(r=>{
+      if(r.peerId===Net.selfId)return;
+      this.remotePlayers[r.peerId]={
+        peerId:r.peerId,charId:r.charId,weaponId:r.weaponId,
+        x:this.player.x+(Math.random()-0.5)*80,y:this.player.y+(Math.random()-0.5)*80,
+        angle:0,aimAngle:0,hp:100,maxHp:100,alive:true,
+        walkT:0,moving:false,
+        charDef:CHAR_DEFS[r.charId]||CHAR_DEFS.octane
+      };
+    });
+    UI.announce(`🌐 ONLINE — ${payload.roster.length} PLAYER${payload.roster.length>1?'S':''}`,2.5,'#aa88ff');
   },
   startGame(charId,weaponId,p2CharId,p2WeaponId){
     _eid=1000;
@@ -9628,6 +10006,39 @@ const Game={
     });
     this.player.draw();
     if(this.player2)this.player2.draw();
+    // ── ONLINE: render remote ghost players ──
+    if(this.online&&this.remotePlayers){
+      for(const pid in this.remotePlayers){
+        const g=this.remotePlayers[pid];if(!g||!g.alive)continue;
+        const sx=Camera.sx(g.x),sy=Camera.sy(g.y);
+        // Skip if far off-screen
+        if(sx<-100||sx>canvas.width+100||sy<-100||sy>canvas.height+100)continue;
+        // Glowing identity ring under ally
+        ctx.save();
+        const rt=performance.now()/600;
+        const pulse=0.6+0.4*Math.sin(rt*Math.PI*2);
+        ctx.globalAlpha=0.5*pulse;
+        ctx.strokeStyle=g.charDef.color;ctx.lineWidth=2.5;
+        ctx.shadowColor=g.charDef.color;ctx.shadowBlur=14;
+        ctx.beginPath();ctx.ellipse(sx,sy+P_R*0.78,P_R*0.65,P_R*0.18,0,0,Math.PI*2);ctx.stroke();
+        ctx.shadowBlur=0;ctx.globalAlpha=1;
+        ctx.restore();
+        // Body
+        drawCharacter(sx,sy,g.angle||0,g.aimAngle||0,false,g.charDef,null,g.walkT||0,g.weaponId||'r301',null,0);
+        // "ALLY" name tag above
+        ctx.save();
+        ctx.fillStyle='rgba(0,0,0,0.55)';
+        ctx.beginPath();ctx.roundRect(sx-30,sy-P_R-30,60,18,4);ctx.fill();
+        ctx.fillStyle=g.charDef.color;ctx.font='bold 10px monospace';ctx.textAlign='center';
+        ctx.fillText('🌐 '+(g.charDef.name||'ALLY'),sx,sy-P_R-17);
+        // HP bar above name
+        const hpPct=Math.max(0,Math.min(1,g.hp/g.maxHp));
+        ctx.fillStyle='rgba(0,0,0,0.65)';ctx.beginPath();ctx.roundRect(sx-22,sy-P_R-40,44,4,2);ctx.fill();
+        ctx.fillStyle=hpPct>0.5?'#3de84e':hpPct>0.25?'#ffaa00':'#ff3333';
+        ctx.beginPath();ctx.roundRect(sx-22,sy-P_R-40,44*hpPct,4,2);ctx.fill();
+        ctx.restore();
+      }
+    }
     UI.drawHUD(this.player,Spawner.wave);
     if(this.player2)UI.drawHUDRight(this.player2);
     VoiceManager.draw();
@@ -9656,12 +10067,134 @@ const Game={
         if(btn==='set_1p'){AudioManager.play('click');this.coopPlayers=1;Gamepads.pads=[null,null];Gamepads._detectedIds=['',''];}
         else if(btn==='set_2p'){AudioManager.play('click');this.coopPlayers=2;this._p2SelectingP2=false;Gamepads.pads=[null,null];Gamepads._detectedIds=['',''];}
         else if(btn==='play'){AudioManager.play('click');this._p2SelectingP2=false;this.state='char_select';}
+        else if(btn==='online'){AudioManager.play('click');this.state='online_menu';this._onlineSub='choose';this._onlineJoinCode='';}
         else if(btn==='pets'){AudioManager.play('click');this.state='pets';}
         else if(btn==='tree'){AudioManager.play('click');this.state='tree';}
         else if(btn==='stats'){AudioManager.play('click');this.state='stats';}
         else if(btn==='settings'){AudioManager.play('click');this._prevState='main_menu';this.state='settings';}
         else if(btn==='quit'){window.close();}
       }
+    } else if(this.state==='online_menu'){
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      UI.drawOnlineMenu(click,this._onlineSub||'choose');
+      // Click handling
+      if(click){
+        const cx=canvas.width/2,cy=canvas.height/2;
+        if(this._onlineSub==='choose'){
+          if(UI.hitMenuBtn(click.x,click.y,cx,cy-30,300,52)){
+            // HOST
+            AudioManager.play('click');
+            const code=Net.newCode();
+            (async()=>{
+              const ok=await Net.connect(code,true);
+              if(ok){this._onlineSub='lobby';}
+              else {UI.announce('CONNECTION FAILED',2,'#ff6666');}
+            })();
+          } else if(UI.hitMenuBtn(click.x,click.y,cx,cy+40,300,52)){
+            // JOIN
+            AudioManager.play('click');this._onlineSub='join_input';this._onlineJoinCode='';
+          } else if(UI.hitMenuBtn(click.x,click.y,cx,cy+150,260,40)){
+            AudioManager.play('click');this.state='main_menu';
+          }
+        } else if(this._onlineSub==='join_input'){
+          // Focus mobile keyboard if hit code box
+          if(UI._codeBoxRect){
+            const r=UI._codeBoxRect;
+            if(click.x>=r.x&&click.x<=r.x+r.w&&click.y>=r.y&&click.y<=r.y+r.h){
+              if(window._codeInputEl){window._codeInputEl.value=this._onlineJoinCode||'';try{window._codeInputEl.focus();}catch(_){}}
+            }
+          }
+          if(UI.hitMenuBtn(click.x,click.y,cx,cy+70,260,46)){
+            const c=(this._onlineJoinCode||'').toUpperCase();
+            if(c.length===6){
+              AudioManager.play('click');
+              (async()=>{
+                const ok=await Net.connect(c,false);
+                if(ok){this._onlineSub='lobby';}
+                else {UI.announce('CONNECTION FAILED',2,'#ff6666');}
+              })();
+            }
+          } else if(UI.hitMenuBtn(click.x,click.y,cx,cy+140,260,40)){
+            AudioManager.play('click');this._onlineSub='choose';
+          }
+        } else if(this._onlineSub==='lobby'){
+          // Compute slot positions for clicks
+          const roster=Net.currentRoster();
+          const slotY=cy-150+64+40;
+          // Pick character button
+          if(UI.hitMenuBtn(click.x,click.y,cx-150,slotY+110+62,260,42)){
+            AudioManager.play('click');this.state='online_char_select';
+          }
+          // Start game (host only)
+          else if(Net.isHost&&roster.length>=1&&UI.hitMenuBtn(click.x,click.y,cx+150,slotY+110+62,260,42)){
+            AudioManager.play('click');
+            const payload=Net.hostStart();
+            if(payload)this._onlineStart(payload);
+          }
+          // Leave
+          else if(UI.hitMenuBtn(click.x,click.y,cx,slotY+110+118,200,38)){
+            AudioManager.play('click');Net.disconnect();this.state='main_menu';
+          }
+        }
+      }
+      // Keyboard input for join code (PC)
+      if(this._onlineSub==='join_input'){
+        const codeChars='ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+        // Match by keycode pattern
+        codeChars.split('').forEach(c=>{
+          const k=isNaN(parseInt(c))?'Key'+c:'Digit'+c;
+          if(Input.wasPressed(k)){
+            this._onlineJoinCode=(this._onlineJoinCode||'').padEnd(0,'')+c;
+            if(this._onlineJoinCode.length>6)this._onlineJoinCode=this._onlineJoinCode.slice(0,6);
+          }
+        });
+        if(Input.wasPressed('Backspace'))this._onlineJoinCode=(this._onlineJoinCode||'').slice(0,-1);
+        if(Input.wasPressed('Escape')){this._onlineSub='choose';this._onlineJoinCode='';}
+        if(Input.wasPressed('Enter')&&(this._onlineJoinCode||'').length===6){
+          const c=this._onlineJoinCode.toUpperCase();
+          (async()=>{
+            const ok=await Net.connect(c,false);
+            if(ok){this._onlineSub='lobby';}
+            else {UI.announce('CONNECTION FAILED',2,'#ff6666');}
+          })();
+        }
+      }
+      // Lobby ESC = leave
+      if(this._onlineSub==='lobby'&&Input.wasPressed('Escape')){
+        Net.disconnect();this.state='main_menu';
+      }
+      if(UI._announce)UI._drawAnnounce();
+    } else if(this.state==='online_char_select'){
+      // Reuse the normal char_select UI but in "online pick" mode
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      UI.drawCharSelect();
+      if(click){
+        const c=UI.getCharSelectClick(click.x,click.y);
+        if(c==='__back__'){AudioManager.play('click');this.state='online_menu';this._onlineSub='lobby';}
+        else if(c){
+          if(Save.isCharUnlocked(c)){this.selectedChar=c;this.state='online_weapon_select';AudioManager.play('select_char');}
+          else {
+            const cost=RARITY_COST[CHAR_DEFS[c].rarity||'common'];
+            if(Save.data.kiwis>=cost){Save.data.kiwis-=cost;Save.unlockChar(c);Save.save();AudioManager.play('click');}
+            else {AudioManager.play('click');UI.announce('NOT ENOUGH KIWIS',1.5,'#ff4444');}
+          }
+        }
+      }
+      if(UI._announce)UI._drawAnnounce();
+    } else if(this.state==='online_weapon_select'){
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      UI.drawWeaponSelect(this.selectedChar);
+      if(click){
+        const w=UI.getWeaponSelectClick(click.x,click.y);
+        if(w==='__back__'){AudioManager.play('click');this.state='online_char_select';}
+        else if(w&&Save.isWeaponUnlocked(w)){
+          AudioManager.play('select_weapon');
+          // Save pick and return to lobby
+          Net.setMyPick(this.selectedChar,w);
+          this.state='online_menu';this._onlineSub='lobby';
+        }
+      }
+      if(UI._announce)UI._drawAnnounce();
     } else if(this.state==='tree'){
       ctx.clearRect(0,0,canvas.width,canvas.height);
       UI.drawTree(click);
@@ -9770,6 +10303,63 @@ const Game={
       if(UI._announce)UI._drawAnnounce();
     } else if(this.state==='playing'){
       this.update(dt);
+      // ── ONLINE MULTIPLAYER SYNC ──
+      // Everyone (host + clients) broadcasts their local player state.
+      // Everyone receives others' states and renders them as ghost allies.
+      if(this.online&&this.player){
+        const myState={
+          x:this.player.x,y:this.player.y,
+          angle:this.player.angle,aimAngle:this.player.aimAngle,
+          hp:this.player.hp,maxHp:this.player.maxHp,
+          alive:this.player.alive,
+          charId:this.player.charId,weaponId:this.player.weaponId,
+          walkT:this.player.walkT,moving:this.player.moving,
+          shooting:!!this.player._netShooting,
+          t:performance.now()
+        };
+        // Host uses 'state' channel; clients use 'input' (just a name, same effect)
+        if(Net.isHost){
+          Net.broadcast(myState,dt);
+        } else {
+          Net.sendInput(myState,dt);
+        }
+        // Apply received states from peers → update remotePlayers ghosts
+        const incoming=Net.isHost?Net.consumeInputs():{};
+        // Host: peer inputs come via 'inp' channel (Net.inputs)
+        for(const pid in incoming){
+          const s=incoming[pid];if(!s)continue;
+          if(!this.remotePlayers[pid]){
+            this.remotePlayers[pid]={peerId:pid,x:s.x,y:s.y,angle:0,aimAngle:0,hp:100,maxHp:100,alive:true,walkT:0,moving:false,charId:s.charId||'octane',weaponId:s.weaponId||'r301',charDef:CHAR_DEFS[s.charId]||CHAR_DEFS.octane};
+          }
+          const g=this.remotePlayers[pid];
+          // Smooth interpolation toward incoming pos
+          const lerp=0.45;
+          g.x+=(s.x-g.x)*lerp;g.y+=(s.y-g.y)*lerp;
+          g.angle=s.angle;g.aimAngle=s.aimAngle;
+          g.hp=s.hp;g.maxHp=s.maxHp;g.alive=s.alive;
+          g.walkT=s.walkT;g.moving=s.moving;
+          if(s.charId&&s.charId!==g.charId){g.charId=s.charId;g.charDef=CHAR_DEFS[s.charId]||CHAR_DEFS.octane;}
+          if(s.weaponId)g.weaponId=s.weaponId;
+        }
+        // Clients: snapshot from host
+        if(!Net.isHost&&Net.lastSnapshot){
+          const s=Net.lastSnapshot;
+          const pid=this.onlineHostId;
+          if(s&&pid){
+            if(!this.remotePlayers[pid]){
+              this.remotePlayers[pid]={peerId:pid,x:s.x,y:s.y,angle:0,aimAngle:0,hp:100,maxHp:100,alive:true,walkT:0,moving:false,charId:s.charId||'octane',weaponId:s.weaponId||'r301',charDef:CHAR_DEFS[s.charId]||CHAR_DEFS.octane};
+            }
+            const g=this.remotePlayers[pid];
+            const lerp=0.45;
+            g.x+=(s.x-g.x)*lerp;g.y+=(s.y-g.y)*lerp;
+            g.angle=s.angle;g.aimAngle=s.aimAngle;
+            g.hp=s.hp;g.maxHp=s.maxHp;g.alive=s.alive;
+            g.walkT=s.walkT;g.moving=s.moving;
+            if(s.charId&&s.charId!==g.charId){g.charId=s.charId;g.charDef=CHAR_DEFS[s.charId]||CHAR_DEFS.octane;}
+            if(s.weaponId)g.weaponId=s.weaponId;
+          }
+        }
+      }
       this.draw();
       // pause button click (top-right corner)
       if(click&&this.player){
@@ -9851,6 +10441,43 @@ function _resizeCanvas(){_fitCanvas();}
 window.addEventListener('resize',_resizeCanvas);
 window.addEventListener('orientationchange',()=>{setTimeout(_resizeCanvas,100);});
 document.addEventListener('fullscreenchange',()=>{setTimeout(_resizeCanvas,50);});
+
+// ─── MOBILE ROOM-CODE KEYBOARD (online multiplayer) ────────────
+(function(){
+  const el=document.createElement('input');
+  el.type='text';
+  el.autocomplete='off';el.autocapitalize='characters';
+  el.setAttribute('autocorrect','off');el.setAttribute('spellcheck','false');
+  el.maxLength=6;
+  el.style.cssText='position:fixed;left:8px;bottom:38px;width:120px;height:24px;opacity:0;border:none;background:transparent;font-size:16px;z-index:9999;pointer-events:none;';
+  document.body.appendChild(el);
+  window._codeInputEl=el;
+  el.addEventListener('input',e=>{
+    if(typeof Game!=='undefined'){
+      // Filter to allowed chars only (matches Net.newCode alphabet)
+      const C='ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+      let v=(e.target.value||'').toUpperCase();
+      let f='';for(const ch of v){if(C.indexOf(ch)>=0&&f.length<6)f+=ch;}
+      el.value=f;
+      Game._onlineJoinCode=f;
+    }
+  });
+  el.addEventListener('keydown',e=>{
+    if(e.key==='Enter'){
+      e.preventDefault();
+      if(typeof Game!=='undefined'&&Game.state==='online_menu'&&Game._onlineSub==='join_input'){
+        const c=(Game._onlineJoinCode||'').toUpperCase();
+        if(c.length===6){
+          el.blur();
+          (async()=>{
+            const ok=await Net.connect(c,false);
+            if(ok)Game._onlineSub='lobby';
+          })();
+        }
+      }
+    } else if(e.key==='Escape'){el.blur();}
+  });
+})();
 
 // ─── MOBILE CHEAT-CODE KEYBOARD ────────────────────────────────
 // Hidden <input> that lives off-screen. We focus it programmatically when the
