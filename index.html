@@ -2653,10 +2653,37 @@ const Companions={
   _drawPet(c){
     const R=this.PET_R;
     const id=c.id;
-    // glow halo
-    ctx.shadowColor=c.def.color;ctx.shadowBlur=14;
-    ctx.fillStyle=c.def.color;ctx.globalAlpha=0.25;
-    ctx.beginPath();ctx.arc(0,0,R*1.2,0,Math.PI*2);ctx.fill();
+    // Multi-layered aura behind pet for a "premium" magical look
+    const t=performance.now()/1000;
+    const pulse=0.5+0.5*Math.sin(t*2);
+    // Soft ground shadow ellipse
+    const grdShadow=ctx.createRadialGradient(0,R*0.85,R*0.2,0,R*0.85,R*1.0);
+    grdShadow.addColorStop(0,'rgba(0,0,0,0.55)');
+    grdShadow.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=grdShadow;
+    ctx.beginPath();ctx.ellipse(0,R*0.85,R*0.95,R*0.25,0,0,Math.PI*2);ctx.fill();
+    // Outer faint radial aura (large, breathing)
+    const auraR=R*1.55+pulse*6;
+    const aura=ctx.createRadialGradient(0,0,R*0.6,0,0,auraR);
+    aura.addColorStop(0,c.def.color+'66');
+    aura.addColorStop(0.6,c.def.color+'22');
+    aura.addColorStop(1,c.def.color+'00');
+    ctx.fillStyle=aura;
+    ctx.beginPath();ctx.arc(0,0,auraR,0,Math.PI*2);ctx.fill();
+    // Sparkles orbiting (4 small dots rotating)
+    for(let i=0;i<4;i++){
+      const a=t*1.2+i*Math.PI*0.5;
+      const sxp=Math.cos(a)*R*1.25, syp=Math.sin(a)*R*1.25;
+      const sparkA=0.4+0.4*Math.sin(t*4+i);
+      ctx.fillStyle=c.def.color;ctx.globalAlpha=sparkA;
+      ctx.shadowColor=c.def.color;ctx.shadowBlur=8;
+      ctx.beginPath();ctx.arc(sxp,syp,2.2,0,Math.PI*2);ctx.fill();
+    }
+    ctx.shadowBlur=0;ctx.globalAlpha=1;
+    // Inner halo (close to pet, gives the pet a clear color signature)
+    ctx.shadowColor=c.def.color;ctx.shadowBlur=18;
+    ctx.fillStyle=c.def.color;ctx.globalAlpha=0.28;
+    ctx.beginPath();ctx.arc(0,0,R*1.18,0,Math.PI*2);ctx.fill();
     ctx.shadowBlur=0;ctx.globalAlpha=1;
     if(id==='dog'){
       // brown dog
@@ -7278,29 +7305,78 @@ function drawArena(){
   OBSTACLES.forEach(o=>{
     const sx=Camera.sx(o.x),sy=Camera.sy(o.y);
     if(sx<-100||sx>canvas.width+100||sy<-100||sy>canvas.height+100)return;
-    ctx.fillStyle='rgba(0,0,0,0.4)';ctx.beginPath();ctx.roundRect(sx-o.w/2+3,sy-o.h/2+5,o.w,o.h,3);ctx.fill();
+    // Long soft drop shadow
+    const shG=ctx.createRadialGradient(sx+3,sy+7,o.w*0.2,sx+3,sy+7,o.w*0.9);
+    shG.addColorStop(0,'rgba(0,0,0,0.55)');shG.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=shG;
+    ctx.beginPath();ctx.roundRect(sx-o.w/2+3,sy-o.h/2+7,o.w,o.h,3);ctx.fill();
     if(o.kind==='crate'){
-      // wood body
-      ctx.fillStyle='#3a2814';ctx.beginPath();ctx.roundRect(sx-o.w/2,sy-o.h/2,o.w,o.h,3);ctx.fill();
-      // wood grain lines
-      ctx.strokeStyle='rgba(80,50,10,0.55)';ctx.lineWidth=1;
+      // base wood with vertical gradient (top light → bottom dark)
+      const wG=ctx.createLinearGradient(sx,sy-o.h/2,sx,sy+o.h/2);
+      wG.addColorStop(0,'#5a3e1c');
+      wG.addColorStop(0.5,'#3e2a14');
+      wG.addColorStop(1,'#1f140a');
+      ctx.fillStyle=wG;
+      ctx.beginPath();ctx.roundRect(sx-o.w/2,sy-o.h/2,o.w,o.h,3);ctx.fill();
+      // wood plank seams (horizontal)
+      ctx.strokeStyle='rgba(20,12,5,0.7)';ctx.lineWidth=1.2;
       const gr=o.h/4;
       for(let gi=1;gi<4;gi++){const gy=sy-o.h/2+gi*gr;ctx.beginPath();ctx.moveTo(sx-o.w/2+3,gy);ctx.lineTo(sx+o.w/2-3,gy);ctx.stroke();}
-      // metal banding
-      ctx.strokeStyle='#7a6030';ctx.lineWidth=2;ctx.beginPath();ctx.roundRect(sx-o.w/2,sy-o.h/2,o.w,o.h,3);ctx.stroke();
+      // wood grain highlights (subtle horizontal scratches)
+      ctx.strokeStyle='rgba(140,95,40,0.22)';ctx.lineWidth=0.8;
+      for(let gi=0;gi<4;gi++){
+        const gy=sy-o.h/2+gi*gr+gr*0.4;
+        ctx.beginPath();ctx.moveTo(sx-o.w/2+4,gy);ctx.lineTo(sx-o.w/2+o.w*0.5,gy);ctx.stroke();
+      }
+      // top-edge highlight (light catches top)
+      const topG=ctx.createLinearGradient(sx,sy-o.h/2,sx,sy-o.h/2+5);
+      topG.addColorStop(0,'rgba(200,150,80,0.45)');topG.addColorStop(1,'rgba(200,150,80,0)');
+      ctx.fillStyle=topG;ctx.beginPath();ctx.roundRect(sx-o.w/2+1,sy-o.h/2,o.w-2,5,2);ctx.fill();
+      // metal banding (top and bottom)
+      const bandG=ctx.createLinearGradient(sx,0,sx,4);
+      ctx.strokeStyle='#a08040';ctx.lineWidth=2.5;
+      ctx.beginPath();ctx.roundRect(sx-o.w/2,sy-o.h/2,o.w,o.h,3);ctx.stroke();
+      // corner rivets (4 small bright dots)
+      ctx.fillStyle='#ffd060';ctx.shadowColor='#ffd060';ctx.shadowBlur=4;
+      [[-1,-1],[1,-1],[-1,1],[1,1]].forEach(([dx,dy])=>{
+        ctx.beginPath();ctx.arc(sx+dx*(o.w/2-5),sy+dy*(o.h/2-5),1.6,0,Math.PI*2);ctx.fill();
+      });
+      ctx.shadowBlur=0;
       // center cross-strap
-      ctx.strokeStyle='rgba(100,75,20,0.6)';ctx.lineWidth=2;
+      ctx.strokeStyle='rgba(100,75,20,0.7)';ctx.lineWidth=2;
       ctx.beginPath();ctx.moveTo(sx-o.w/2,sy);ctx.lineTo(sx+o.w/2,sy);ctx.moveTo(sx,sy-o.h/2);ctx.lineTo(sx,sy+o.h/2);ctx.stroke();
     } else {
-      // concrete barrier body
-      ctx.fillStyle='#252535';ctx.beginPath();ctx.roundRect(sx-o.w/2,sy-o.h/2,o.w,o.h,4);ctx.fill();
+      // concrete barrier with vertical gradient
+      const cgG=ctx.createLinearGradient(sx,sy-o.h/2,sx,sy+o.h/2);
+      cgG.addColorStop(0,'#3a3a52');
+      cgG.addColorStop(0.5,'#252535');
+      cgG.addColorStop(1,'#15151f');
+      ctx.fillStyle=cgG;
+      ctx.beginPath();ctx.roundRect(sx-o.w/2,sy-o.h/2,o.w,o.h,4);ctx.fill();
       // hazard diagonal stripes (clipped to shape)
       ctx.save();ctx.beginPath();ctx.roundRect(sx-o.w/2+1,sy-o.h/2+1,o.w-2,o.h-2,3);ctx.clip();
-      ctx.strokeStyle='rgba(255,165,20,0.22)';ctx.lineWidth=6;
+      ctx.strokeStyle='rgba(255,165,20,0.28)';ctx.lineWidth=6;
       for(let si=-o.w;si<o.w+o.h;si+=14){ctx.beginPath();ctx.moveTo(sx-o.w/2+si,sy-o.h/2);ctx.lineTo(sx-o.w/2+si-o.h,sy+o.h/2);ctx.stroke();}
       ctx.restore();
-      // warning stripe band
-      ctx.fillStyle='rgba(255,160,20,0.55)';ctx.beginPath();ctx.roundRect(sx-o.w/2,sy-3,o.w,5,2);ctx.fill();
+      // warning stripe band (bright orange with sheen)
+      const wsG=ctx.createLinearGradient(sx,sy-3,sx,sy+2);
+      wsG.addColorStop(0,'rgba(255,200,80,0.85)');
+      wsG.addColorStop(0.5,'rgba(255,160,20,0.85)');
+      wsG.addColorStop(1,'rgba(180,90,10,0.85)');
+      ctx.fillStyle=wsG;ctx.beginPath();ctx.roundRect(sx-o.w/2,sy-3,o.w,5,2);ctx.fill();
+      // top edge specular
+      const tsG=ctx.createLinearGradient(sx,sy-o.h/2,sx,sy-o.h/2+4);
+      tsG.addColorStop(0,'rgba(255,255,255,0.30)');tsG.addColorStop(1,'rgba(255,255,255,0)');
+      ctx.fillStyle=tsG;ctx.beginPath();ctx.roundRect(sx-o.w/2+1,sy-o.h/2,o.w-2,4,3);ctx.fill();
+      // bolt heads at corners
+      ctx.fillStyle='#1a1a26';
+      [[-1,-1],[1,-1],[-1,1],[1,1]].forEach(([dx,dy])=>{
+        ctx.beginPath();ctx.arc(sx+dx*(o.w/2-5),sy+dy*(o.h/2-5),2.2,0,Math.PI*2);ctx.fill();
+      });
+      ctx.fillStyle='rgba(255,255,255,0.25)';
+      [[-1,-1],[1,-1],[-1,1],[1,1]].forEach(([dx,dy])=>{
+        ctx.beginPath();ctx.arc(sx+dx*(o.w/2-5)-0.6,sy+dy*(o.h/2-5)-0.6,0.9,0,Math.PI*2);ctx.fill();
+      });
       ctx.strokeStyle='#3a3a50';ctx.lineWidth=2;ctx.beginPath();ctx.roundRect(sx-o.w/2,sy-o.h/2,o.w,o.h,4);ctx.stroke();
     }
   });
