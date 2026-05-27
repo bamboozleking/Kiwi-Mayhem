@@ -2304,7 +2304,7 @@ const WEAPON_DEFS={
     desc:'Slows 50% for 3s · pierces 1',pickAmmo:80,silly:'icegun',rarity:'common'},
 };
 const WEAPON_ORDER_OVERRIDE=['r301','flatline','r99','sentinel','peacekeeper','katana','banana'];
-const WEAPON_ORDER=['r301','flatline','r99','sentinel','peacekeeper','katana','banana','slipper','plunger','beehive','dicegun','portalgun','vacuum','disco','keyboard','blackholegun','timegun','spaceoddity','lucille','lavagun','icegun']
+const WEAPON_ORDER=['r301','flatline','r99','sentinel','peacekeeper','katana','banana','slipper','plunger','dicegun','portalgun','vacuum','disco','keyboard','blackholegun','timegun','spaceoddity','lucille','lavagun','icegun']
   .sort((a,b)=>RARITY_ORDER[WEAPON_DEFS[a].rarity||'common']-RARITY_ORDER[WEAPON_DEFS[b].rarity||'common']);
 
 // ─── LEVEL 10 ULTIMATES (one per character) ────────────────────
@@ -2815,6 +2815,10 @@ const COMPANION_DEFS=[
   {id:'fox',name:'Fox',color:'#ff7733',icon:'🦊',effect:'Steals kiwi from enemies',cost:10,rarity:'epic'},
   // NEW: panda - high tier
   {id:'panda',name:'Panda',color:'#fafafa',icon:'🐼',effect:'Tank · absorbs 1 hit / 8s + bamboo slam',cost:15,rarity:'legendary'},
+  // NEW: bat — agile night flier
+  {id:'bat',name:'Bat',color:'#aa44dd',icon:'🦇',effect:'Echo-strike · pecks 2 enemies for 14 dmg every 1.8s',cost:8,rarity:'epic'},
+  // NEW: minion — chaos goggle gremlin
+  {id:'minion',name:'Minion',color:'#ffee44',icon:'👹',effect:'Throws explosive bananas · 30 dmg AoE every 3.5s',cost:12,rarity:'epic'},
 ];
 const Companions={
   defs:COMPANION_DEFS,
@@ -2904,6 +2908,64 @@ const Companions={
       if(c.id==='panda'){
         c._shieldChargeT=(c._shieldChargeT||0)-dt;
         if(c._shieldChargeT<=0&&player.hp<player.maxHp*0.9){player.shieldT=Math.max(player.shieldT||0,0.8);c._shieldChargeT=8;Particles.burst(player.x,player.y,8,{color:'#aaffaa',speed:60,life:0.5,r:3});}
+      }
+      // BAT: echo-strike — peck 2 nearest enemies for 14 dmg every 1.8s
+      if(c.id==='bat'&&c.attackT<=0){
+        c.attackT=1.8;
+        const alive=Game.enemies.filter(e=>e.alive);
+        // Sort by distance, take 2 closest
+        alive.sort((a,b)=>((a.x-c.x)**2+(a.y-c.y)**2)-((b.x-c.x)**2+(b.y-c.y)**2));
+        for(let i=0;i<Math.min(2,alive.length);i++){
+          const e=alive[i];const dx=e.x-c.x,dy=e.y-c.y;if(dx*dx+dy*dy>320*320)break;
+          const dmg=14+c.level*3;e.takeDamage(dmg);
+          // Visual echo-strike line
+          Effects.add({sx:c.x,sy:c.y,ex:e.x,ey:e.y,life:0.22,maxLife:0.22,
+            draw(){const ax=Camera.sx(this.sx),ay=Camera.sy(this.sy),bx=Camera.sx(this.ex),by=Camera.sy(this.ey),f=this.life/this.maxLife;
+              ctx.save();ctx.globalCompositeOperation='lighter';ctx.globalAlpha=f*0.9;
+              ctx.strokeStyle='#cc88ff';ctx.lineWidth=3;ctx.shadowColor='#cc88ff';ctx.shadowBlur=14;
+              ctx.beginPath();ctx.moveTo(ax,ay);ctx.lineTo(bx,by);ctx.stroke();
+              ctx.restore();ctx.shadowBlur=0;ctx.globalAlpha=1;}});
+          Particles.burst(e.x,e.y,5,{color:'#cc88ff',speed:80,life:0.3,r:3});
+        }
+      }
+      // MINION: explosive banana every 3.5s — 30 dmg AoE r 80
+      if(c.id==='minion'&&c.attackT<=0){
+        c.attackT=3.5;
+        // Find nearest enemy as target
+        let near=null,bd=380*380;
+        for(const e of Game.enemies){if(!e.alive)continue;const dx=e.x-c.x,dy=e.y-c.y,d2=dx*dx+dy*dy;if(d2<bd){bd=d2;near=e;}}
+        if(near){
+          const tx=near.x,ty=near.y,dmg=30+c.level*6,R=80;
+          // Throw projectile that lands at target
+          Effects.add({x:c.x,y:c.y,tx,ty,life:0.5,maxLife:0.5,_done:false,
+            update(d){
+              const f=1-this.life/this.maxLife;
+              this.curX=this.x+(this.tx-this.x)*f;
+              this.curY=this.y+(this.ty-this.y)*f-Math.sin(f*Math.PI)*40; // arc trajectory
+              if(!this._done&&this.life<0.05){
+                this._done=true;
+                for(const e of Game.enemies){if(!e.alive)continue;const dx=e.x-this.tx,dy=e.y-this.ty;if(dx*dx+dy*dy<R*R)e.takeDamage(dmg);}
+                Particles.burst(this.tx,this.ty,18,{color:'#ffdd44',speed:170,life:0.5,r:4});
+                Particles.burst(this.tx,this.ty,8,{color:'#ffffff',speed:100,life:0.3,r:3});
+                Camera.shake(2,0.15);AudioManager.play('explosion');
+              }
+            },
+            draw(){
+              if(this._done){
+                const sx=Camera.sx(this.tx),sy=Camera.sy(this.ty),f=this.life/0.05;
+                ctx.save();ctx.globalCompositeOperation='lighter';ctx.globalAlpha=f*0.85;
+                const rg=ctx.createRadialGradient(sx,sy,6,sx,sy,R*0.9);
+                rg.addColorStop(0,'#ffffff');rg.addColorStop(0.5,'#ffdd44');rg.addColorStop(1,'rgba(200,80,0,0)');
+                ctx.fillStyle=rg;ctx.beginPath();ctx.arc(sx,sy,R*0.9,0,Math.PI*2);ctx.fill();
+                ctx.restore();ctx.globalAlpha=1;
+              } else {
+                const sx=Camera.sx(this.curX||this.x),sy=Camera.sy(this.curY||this.y);
+                ctx.save();ctx.fillStyle='#ffdd44';ctx.shadowColor='#ffaa00';ctx.shadowBlur=10;
+                ctx.beginPath();ctx.ellipse(sx,sy,5,8,Math.atan2(this.ty-this.y,this.tx-this.x),0,Math.PI*2);ctx.fill();
+                ctx.restore();ctx.shadowBlur=0;
+              }
+            }});
+        }
       }
     }
   },
@@ -3121,6 +3183,110 @@ const Companions={
       ctx.fillStyle='#44cc44';ctx.shadowColor='#22aa22';ctx.shadowBlur=6;
       ctx.beginPath();ctx.ellipse(-R*0.55,R*0.05,R*0.10,R*0.04,-0.4,0,Math.PI*2);ctx.fill();
       ctx.shadowBlur=0;
+    } else if(id==='bat'){
+      // purple bat — body + 2 spread wings + glowing eyes
+      const flap=Math.sin(c._anim*16)*0.5;
+      // wings (left + right, flapping)
+      ctx.fillStyle='#552288';ctx.shadowColor='#aa44dd';ctx.shadowBlur=10;
+      // Left wing
+      ctx.beginPath();
+      ctx.moveTo(-R*0.15,-R*0.1);
+      ctx.quadraticCurveTo(-R*0.9,-R*0.7+flap*R*0.4,-R*1.1,-R*0.2+flap*R*0.3);
+      ctx.lineTo(-R*0.95,R*0.1);
+      ctx.lineTo(-R*0.8,-R*0.1+flap*R*0.2);
+      ctx.lineTo(-R*0.55,R*0.1);
+      ctx.lineTo(-R*0.4,-R*0.05+flap*R*0.1);
+      ctx.lineTo(-R*0.15,R*0.1);
+      ctx.closePath();ctx.fill();
+      // Right wing (mirror)
+      ctx.beginPath();
+      ctx.moveTo(R*0.15,-R*0.1);
+      ctx.quadraticCurveTo(R*0.9,-R*0.7+flap*R*0.4,R*1.1,-R*0.2+flap*R*0.3);
+      ctx.lineTo(R*0.95,R*0.1);
+      ctx.lineTo(R*0.8,-R*0.1+flap*R*0.2);
+      ctx.lineTo(R*0.55,R*0.1);
+      ctx.lineTo(R*0.4,-R*0.05+flap*R*0.1);
+      ctx.lineTo(R*0.15,R*0.1);
+      ctx.closePath();ctx.fill();
+      ctx.shadowBlur=0;
+      // Body (dark purple)
+      ctx.fillStyle='#330044';
+      ctx.beginPath();ctx.ellipse(0,0,R*0.32,R*0.42,0,0,Math.PI*2);ctx.fill();
+      // Head
+      ctx.beginPath();ctx.arc(0,-R*0.35,R*0.32,0,Math.PI*2);ctx.fill();
+      // Ears (pointy triangles)
+      ctx.beginPath();ctx.moveTo(-R*0.22,-R*0.55);ctx.lineTo(-R*0.12,-R*0.85);ctx.lineTo(-R*0.05,-R*0.55);ctx.closePath();ctx.fill();
+      ctx.beginPath();ctx.moveTo(R*0.22,-R*0.55);ctx.lineTo(R*0.12,-R*0.85);ctx.lineTo(R*0.05,-R*0.55);ctx.closePath();ctx.fill();
+      // Inner ears (lighter purple)
+      ctx.fillStyle='#aa44dd';
+      ctx.beginPath();ctx.moveTo(-R*0.17,-R*0.6);ctx.lineTo(-R*0.13,-R*0.78);ctx.lineTo(-R*0.09,-R*0.6);ctx.closePath();ctx.fill();
+      ctx.beginPath();ctx.moveTo(R*0.17,-R*0.6);ctx.lineTo(R*0.13,-R*0.78);ctx.lineTo(R*0.09,-R*0.6);ctx.closePath();ctx.fill();
+      // Glowing red eyes
+      ctx.fillStyle='#ff2244';ctx.shadowColor='#ff2244';ctx.shadowBlur=10;
+      ctx.beginPath();ctx.arc(-R*0.11,-R*0.35,R*0.08,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.arc(R*0.11,-R*0.35,R*0.08,0,Math.PI*2);ctx.fill();
+      // Eye glints
+      ctx.fillStyle='#ffffff';ctx.shadowBlur=0;
+      ctx.beginPath();ctx.arc(-R*0.09,-R*0.37,1.4,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.arc(R*0.13,-R*0.37,1.4,0,Math.PI*2);ctx.fill();
+      // Fangs
+      ctx.fillStyle='#ffffff';
+      ctx.beginPath();ctx.moveTo(-R*0.06,-R*0.2);ctx.lineTo(-R*0.04,-R*0.1);ctx.lineTo(-R*0.02,-R*0.2);ctx.closePath();ctx.fill();
+      ctx.beginPath();ctx.moveTo(R*0.06,-R*0.2);ctx.lineTo(R*0.04,-R*0.1);ctx.lineTo(R*0.02,-R*0.2);ctx.closePath();ctx.fill();
+    } else if(id==='minion'){
+      // yellow minion — capsule body + 1 goggle eye + overalls
+      // shadow
+      ctx.fillStyle='rgba(0,0,0,0.3)';ctx.beginPath();ctx.ellipse(0,R*0.85,R*0.7,R*0.18,0,0,Math.PI*2);ctx.fill();
+      // body (capsule yellow)
+      ctx.fillStyle='#ffd633';ctx.shadowColor='#ffaa00';ctx.shadowBlur=10;
+      ctx.beginPath();ctx.roundRect(-R*0.55,-R*0.8,R*1.1,R*1.5,R*0.55);ctx.fill();ctx.shadowBlur=0;
+      // body highlight (left side bright)
+      ctx.fillStyle='#fff088';ctx.globalAlpha=0.4;
+      ctx.beginPath();ctx.roundRect(-R*0.50,-R*0.75,R*0.4,R*1.4,R*0.4);ctx.fill();ctx.globalAlpha=1;
+      // overalls (blue)
+      ctx.fillStyle='#2244aa';
+      ctx.beginPath();ctx.roundRect(-R*0.55,R*0.05,R*1.1,R*0.65,R*0.18);ctx.fill();
+      // overall straps
+      ctx.fillRect(-R*0.32,-R*0.05,R*0.10,R*0.20);
+      ctx.fillRect(R*0.22,-R*0.05,R*0.10,R*0.20);
+      // overall pocket
+      ctx.fillStyle='#1a3088';
+      ctx.beginPath();ctx.roundRect(-R*0.18,R*0.18,R*0.36,R*0.22,3);ctx.fill();
+      // goggle strap (band around head)
+      ctx.fillStyle='#222222';
+      ctx.fillRect(-R*0.55,-R*0.45,R*1.1,R*0.18);
+      // goggle (one big eye)
+      ctx.fillStyle='#cccccc';
+      ctx.beginPath();ctx.arc(0,-R*0.35,R*0.25,0,Math.PI*2);ctx.fill();
+      // goggle rim
+      ctx.strokeStyle='#222222';ctx.lineWidth=3;
+      ctx.beginPath();ctx.arc(0,-R*0.35,R*0.25,0,Math.PI*2);ctx.stroke();
+      // eye (white sclera)
+      ctx.fillStyle='#ffffff';
+      ctx.beginPath();ctx.arc(0,-R*0.35,R*0.18,0,Math.PI*2);ctx.fill();
+      // iris (brown)
+      ctx.fillStyle='#552200';
+      ctx.beginPath();ctx.arc(0,-R*0.35,R*0.08,0,Math.PI*2);ctx.fill();
+      // pupil
+      ctx.fillStyle='#000';
+      ctx.beginPath();ctx.arc(0,-R*0.35,R*0.04,0,Math.PI*2);ctx.fill();
+      // eye glint
+      ctx.fillStyle='#ffffff';
+      ctx.beginPath();ctx.arc(-R*0.02,-R*0.37,R*0.02,0,Math.PI*2);ctx.fill();
+      // mouth (small grin)
+      ctx.strokeStyle='#222222';ctx.lineWidth=2;ctx.lineCap='round';
+      ctx.beginPath();ctx.arc(0,-R*0.10,R*0.10,0.1,Math.PI-0.1);ctx.stroke();
+      // hair tufts on top (3 small)
+      ctx.strokeStyle='#332200';ctx.lineWidth=2;
+      ctx.beginPath();
+      ctx.moveTo(-R*0.15,-R*0.78);ctx.lineTo(-R*0.18,-R*0.92);
+      ctx.moveTo(0,-R*0.80);ctx.lineTo(0,-R*0.95);
+      ctx.moveTo(R*0.15,-R*0.78);ctx.lineTo(R*0.18,-R*0.92);
+      ctx.stroke();
+      // tiny arms on sides
+      ctx.fillStyle='#ffd633';
+      ctx.beginPath();ctx.ellipse(-R*0.62,R*0.05,R*0.10,R*0.22,-0.2,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.ellipse(R*0.62,R*0.05,R*0.10,R*0.22,0.2,0,Math.PI*2);ctx.fill();
     } else {
       // generic fallback
       ctx.fillStyle=c.def.color;
@@ -11380,11 +11546,35 @@ const Game={
             AudioManager.play('click');this.state='main_menu';
           }
         } else if(this._onlineSub==='join_input'){
-          // Focus mobile keyboard if hit code box
+          // Tap code box → on mobile use native prompt() (reliable keyboard popup);
+          // on desktop the keyboard input below already handles it.
           if(UI._codeBoxRect){
             const r=UI._codeBoxRect;
             if(click.x>=r.x&&click.x<=r.x+r.w&&click.y>=r.y&&click.y<=r.y+r.h){
-              if(window._codeInputEl){window._codeInputEl.value=this._onlineJoinCode||'';try{window._codeInputEl.focus();}catch(_){}}
+              if(TouchControls.on){
+                // Defer prompt so touch event completes cleanly
+                setTimeout(()=>{
+                  const input=prompt('Enter 6-character room code:',this._onlineJoinCode||'');
+                  if(input){
+                    // Filter to valid chars + uppercase + max 6
+                    const C='ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+                    let v=input.toUpperCase();let f='';
+                    for(const ch of v){if(C.indexOf(ch)>=0&&f.length<6)f+=ch;}
+                    this._onlineJoinCode=f;
+                    // Auto-connect if 6 chars
+                    if(f.length===6){
+                      (async()=>{
+                        const ok=await Net.connect(f,false);
+                        if(ok)this._onlineSub='lobby';
+                        else UI.announce('CONNECTION FAILED',2,'#ff6666');
+                      })();
+                    }
+                  }
+                },50);
+              } else if(window._codeInputEl){
+                window._codeInputEl.value=this._onlineJoinCode||'';
+                try{window._codeInputEl.focus();}catch(_){}
+              }
             }
           }
           if(UI.hitMenuBtn(click.x,click.y,cx,cy+70,260,46)){
