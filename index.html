@@ -293,16 +293,24 @@ const TouchControls={
   _used:false,
   lId:-1,lOrigin:null,lx:0,ly:0,
   rId:-1,rOrigin:null,rx:0,ry:0,rActive:false,rJust:false,
-  R:68,r:26,E:22,btnR:26,
-  // Computed positions (dynamic, based on canvas size at call time)
+  // Sizes are in virtual canvas units (1920x1080) — comfortable for thumbs on a scaled phone
+  R:150,r:62,E:55,btnR:62,
+  // Computed positions
+  // Move stick: bottom-left
   _lc(){return{x:this.R+this.E,y:canvas.height-this.R-this.E};},
+  // Fire stick: bottom-right
   _rc(){return{x:canvas.width-this.R-this.E,y:canvas.height-this.R-this.E};},
-  _qc(){const l=this._lc();return{x:l.x,y:l.y-this.R-this.btnR-10};},
-  _rlc(){const l=this._lc();return{x:l.x+this.btnR*2+10,y:l.y-this.R-this.btnR-10};},
-  _fc(){const r=this._rc();return{x:r.x,y:r.y-this.R-this.btnR-10};},
-  _fsc(){return{x:30,y:30};},
-  _hit(tx,ty,p){const dx=tx-p.x,dy=ty-p.y,hr=this.btnR+12;return dx*dx+dy*dy<hr*hr;},
-  _hitFS(tx,ty){const p=this._fsc(),dx=tx-p.x,dy=ty-p.y;return dx*dx+dy*dy<26*26;},
+  // ALL ability buttons on the RIGHT side, stacked vertically above the fire stick
+  // Q (most-used ability): directly above fire stick
+  _qc(){const r=this._rc();return{x:r.x,y:r.y-this.R-this.btnR-32};},
+  // R (reload): above Q
+  _rlc(){const q=this._qc();return{x:q.x,y:q.y-this.btnR*2-22};},
+  // F (ultimate): above R
+  _fc(){const rl=this._rlc();return{x:rl.x,y:rl.y-this.btnR*2-22};},
+  // Fullscreen toggle: top-left, larger hit area
+  _fsc(){return{x:60,y:60};},
+  _hit(tx,ty,p){const dx=tx-p.x,dy=ty-p.y,hr=this.btnR+18;return dx*dx+dy*dy<hr*hr;},
+  _hitFS(tx,ty){const p=this._fsc(),dx=tx-p.x,dy=ty-p.y;return dx*dx+dy*dy<45*45;},
   _showHint:0,
   _toggleFS(){
     const el=document.documentElement;
@@ -336,6 +344,16 @@ const TouchControls={
       const p=_toCanvas(t.clientX,t.clientY);
       // Fullscreen button (always available in any game state)
       if(this._hitFS(p.x,p.y)){this._toggleFS();continue;}
+      // Mobile cheat-bar tap → focus hidden <input> NOW (must be in the same call
+      // stack as the touch event so iOS/Android pop up the soft keyboard).
+      // Generous hit area since the visual bar is small on a scaled phone screen.
+      if(typeof Game!=='undefined'&&Game.state==='char_select'&&window._cheatInputEl){
+        const bx=24,by=108,bw=200,bh=32,pad=40;
+        if(p.x>=bx-pad&&p.x<=bx+bw+pad&&p.y>=by-pad&&p.y<=by+bh+pad){
+          window._cheatInputEl.value='';
+          try{window._cheatInputEl.focus();}catch(_){}
+        }
+      }
       // Menus: emulate click tap
       if(typeof Game!=='undefined'&&Game.state!=='playing'){
         Input.mouse.x=p.x;Input.mouse.y=p.y;
@@ -9406,6 +9424,51 @@ function _resizeCanvas(){_fitCanvas();}
 window.addEventListener('resize',_resizeCanvas);
 window.addEventListener('orientationchange',()=>{setTimeout(_resizeCanvas,100);});
 document.addEventListener('fullscreenchange',()=>{setTimeout(_resizeCanvas,50);});
+
+// ─── MOBILE CHEAT-CODE KEYBOARD ────────────────────────────────
+// Hidden <input> that lives off-screen. We focus it programmatically when the
+// user taps the cheat bar so the device's soft keyboard pops up. The value is
+// synced to UI._cheatInput so the on-canvas bar reflects what's typed.
+(function(){
+  const el=document.createElement('input');
+  el.type='text';
+  el.autocomplete='off';
+  el.autocapitalize='characters';
+  el.setAttribute('autocorrect','off');
+  el.setAttribute('spellcheck','false');
+  el.maxLength=12;
+  // Tiny, transparent, off to the side — but NOT display:none (iOS won't focus it then)
+  // font-size:16px prevents iOS from auto-zooming when focused.
+  el.style.cssText='position:fixed;left:8px;bottom:8px;width:120px;height:24px;opacity:0;border:none;background:transparent;font-size:16px;z-index:9999;pointer-events:none;';
+  document.body.appendChild(el);
+  window._cheatInputEl=el;
+  el.addEventListener('input',e=>{
+    if(typeof UI!=='undefined'){
+      UI._cheatInput=(e.target.value||'').toUpperCase().slice(0,12);
+      UI._cheatFocus=true;
+    }
+  });
+  el.addEventListener('keydown',e=>{
+    if(e.key==='Enter'){
+      e.preventDefault();
+      if(typeof UI!=='undefined'){
+        UI.tryCheat(UI._cheatInput||'');
+        UI._cheatInput='';UI._cheatFocus=false;
+      }
+      el.value='';el.blur();
+    } else if(e.key==='Escape'){
+      if(typeof UI!=='undefined'){UI._cheatInput='';UI._cheatFocus=false;}
+      el.value='';el.blur();
+    }
+  });
+  el.addEventListener('blur',()=>{
+    // Auto-submit whatever was typed when the user dismisses the keyboard
+    if(typeof UI!=='undefined'&&UI._cheatFocus){
+      if(UI._cheatInput)UI.tryCheat(UI._cheatInput);
+      UI._cheatInput='';UI._cheatFocus=false;
+    }
+  });
+})();
 
 // ─── PWA MANIFEST ──────────────────────────────────────────────
 (function(){
